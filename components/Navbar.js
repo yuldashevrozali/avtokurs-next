@@ -14,6 +14,7 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [dark, setDark] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -23,7 +24,10 @@ export default function Navbar() {
     setDark(document.documentElement.getAttribute('data-theme') === 'dark');
   }, []);
 
-  // Session check: 30s da bir marta ping, 401 kelsa — boshqa qurilmadan kirilgan
+  // Close mobile menu on route change
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  // Session check every 30s
   useEffect(() => {
     if (!user) return;
     const token = localStorage.getItem('token');
@@ -57,6 +61,7 @@ export default function Navbar() {
     }
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    setMenuOpen(false);
     router.push('/login');
   }
 
@@ -65,26 +70,44 @@ export default function Navbar() {
     return pathname.startsWith(href);
   }
 
+  const close = () => setMenuOpen(false);
+
   return (
     <nav>
-      <Link className="nav-logo" href="/">Avtotest</Link>
-      <div className="nav-links">
+      <Link className="nav-logo" href="/" onClick={close}>Avtotest</Link>
+
+      {/* Nav links — row on desktop, dropdown on mobile */}
+      <div className={`nav-links${menuOpen ? ' nav-open' : ''}`}>
         {user ? (
           <>
             {NAV_LINKS.map(l => (
-              <Link key={l.href} href={l.href} className={isActive(l.href) ? 'active' : ''}>{l.label}</Link>
+              <Link key={l.href} href={l.href} className={isActive(l.href) ? 'active' : ''} onClick={close}>
+                {l.label}
+              </Link>
             ))}
             {user.role === 'admin' && (
-              <Link href="/admin" className={pathname === '/admin' ? 'active' : ''}>Admin</Link>
+              <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={close}>Admin</Link>
             )}
             <span style={{fontSize:'0.85rem',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{user.name}</span>
             <button className="btn-nav" onClick={logout}>Chiqish</button>
           </>
         ) : (
-          <Link href="/login">Kirish</Link>
+          <Link href="/login" onClick={close}>Kirish</Link>
         )}
+      </div>
+
+      {/* Theme toggle + hamburger — always on the right */}
+      <div className="nav-right">
         <button onClick={toggleTheme} className="theme-toggle" title={dark ? 'Kunduzgi rejim' : 'Tungi rejim'}>
           {dark ? '☀' : '☾'}
+        </button>
+        <button
+          className="hamburger"
+          onClick={() => setMenuOpen(v => !v)}
+          aria-label="Menyu"
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? '✕' : '☰'}
         </button>
       </div>
     </nav>

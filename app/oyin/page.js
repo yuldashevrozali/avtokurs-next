@@ -519,8 +519,8 @@ export default function OyinPage() {
         </div>
         <canvas ref={canvasRef} width={CW} height={CH}
           style={{width:'100%',maxWidth:CW,borderRadius:12,display:'block',border:'2px solid var(--border)',background:'#93C5FD'}} />
-        <p style={{marginTop:'0.75rem',fontSize:'0.8rem',color:'var(--text-muted)'}}>
-          Sahifaga bosilganligiga ishonch hosil qiling, keyin klaviatura tugmalarini bosing
+        <p style={{marginTop:'0.75rem',fontSize:'0.8rem',color:'var(--text-muted)',textAlign:'center',padding:'0 1rem'}}>
+          Sahifaga bosing, so'ng <strong>W / ↑</strong> — gaz &nbsp;|&nbsp; <strong>S / ↓</strong> — tormoz
         </p>
       </div>
     </>

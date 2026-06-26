@@ -142,9 +142,9 @@ export default function AdminPage() {
         </div>
 
         {tab === 'modules' && (
-          <div style={{display:'grid',gridTemplateColumns:'260px 1fr',gap:'1.5rem'}}>
+          <div className="admin-layout">
             <div>
-              <div style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10,padding:'1rem'}}>
+              <div style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10,padding:'1rem',overflowX:'auto'}}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.75rem'}}>
                   <h3 style={{fontSize:'0.8rem',textTransform:'uppercase',color:'#64748B',letterSpacing:'0.05em'}}>Modullar</h3>
                   <button onClick={() => { setShowModForm(true); setSelectedMod(null); }} style={{fontSize:'0.8rem',background:'#2563EB',color:'white',border:'none',borderRadius:4,padding:'0.3rem 0.6rem',cursor:'pointer'}}>+ Qo'sh</button>
@@ -232,7 +232,7 @@ export default function AdminPage() {
         )}
 
         {tab === 'users' && (
-          <div style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10,overflow:'auto'}}>
+          <div className="table-scroll" style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10}}>
             <table style={{width:'100%',borderCollapse:'collapse',minWidth:700}}>
               <thead>
                 <tr style={{background:'#F8FAFC',borderBottom:'1px solid #E2E8F0'}}>
@@ -291,7 +291,16 @@ export default function AdminPage() {
           </div>
         )}
       </div>
-      <style>{`@media(max-width:768px){.container>div>div:first-child+div{grid-template-columns:1fr!important}table{font-size:0.8rem}}`}</style>
+      <style>{`
+        @media(max-width:768px){
+          table{font-size:0.8rem}
+          table td,table th{padding:0.5rem 0.6rem!important}
+          .admin-layout{grid-template-columns:1fr!important}
+        }
+        @media(max-width:480px){
+          table td:nth-child(3),table th:nth-child(3){display:none}
+        }
+      `}</style>
     </>
   );
 }

@@ -204,10 +204,10 @@ export default function LessonPage() {
           </div>
         )}
 
-        <div style={{display:'grid',gridTemplateColumns:'270px 1fr',gap:'1.5rem',alignItems:'start'}}>
+        <div className="lesson-layout">
 
           {/* Sidebar */}
-          <div>
+          <div className="lesson-sidebar">
             <h3 style={{fontSize:'0.8rem',fontWeight:700,marginBottom:'0.6rem',color:'var(--text-muted)',textTransform:'uppercase',letterSpacing:'0.06em'}}>
               Darslar ({lessons.length})
             </h3>
@@ -237,7 +237,7 @@ export default function LessonPage() {
           </div>
 
           {/* Main content */}
-          <div>
+          <div className="lesson-main">
             {current ? (
               <>
                 {/* Video */}

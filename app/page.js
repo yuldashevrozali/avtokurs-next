@@ -77,16 +77,16 @@ export default function Home() {
           <p style={{color:'var(--text-muted)',fontSize:'1.05rem',lineHeight:1.6,marginBottom:'2rem',maxWidth:520,margin:'0 auto 2rem'}}>
             Biletlar, mavzular bo'yicha testlar, video darslar va imtihon rejimi — hammasi bir joyda.
           </p>
-          <div style={{display:'flex',gap:'0.875rem',justifyContent:'center',flexWrap:'wrap'}}>
+          <div style={{display:'flex',gap:'0.875rem',justifyContent:'center',flexWrap:'wrap',padding:'0 1rem'}}>
             {user ? (
               <>
-                <Link href="/biletlar" className="btn btn-primary" style={{padding:'0.75rem 1.75rem',fontSize:'1rem'}}>Biletlarni boshlash</Link>
-                <Link href="/imtihon" className="btn btn-outline" style={{padding:'0.75rem 1.75rem',fontSize:'1rem'}}>Imtihon rejimi</Link>
+                <Link href="/biletlar" className="btn btn-primary" style={{padding:'0.75rem 1.75rem',fontSize:'1rem',flex:'1 1 auto',maxWidth:220,textAlign:'center'}}>Biletlarni boshlash</Link>
+                <Link href="/imtihon" className="btn btn-outline" style={{padding:'0.75rem 1.75rem',fontSize:'1rem',flex:'1 1 auto',maxWidth:220,textAlign:'center'}}>Imtihon rejimi</Link>
               </>
             ) : (
               <>
-                <Link href="/login" className="btn btn-primary" style={{padding:'0.75rem 1.75rem',fontSize:'1rem'}}>Bepul boshlash</Link>
-                <Link href="/mavzular" className="btn btn-outline" style={{padding:'0.75rem 1.75rem',fontSize:'1rem'}}>Mavzularni ko'rish</Link>
+                <Link href="/login" className="btn btn-primary" style={{padding:'0.75rem 1.75rem',fontSize:'1rem',flex:'1 1 auto',maxWidth:220,textAlign:'center'}}>Bepul boshlash</Link>
+                <Link href="/mavzular" className="btn btn-outline" style={{padding:'0.75rem 1.75rem',fontSize:'1rem',flex:'1 1 auto',maxWidth:220,textAlign:'center'}}>Mavzularni ko'rish</Link>
               </>
             )}
           </div>
@@ -95,7 +95,7 @@ export default function Home() {
 
       {/* Stats */}
       <div style={{background:'var(--bg)',borderBottom:'1px solid var(--border)',padding:'1.25rem 1rem'}}>
-        <div style={{maxWidth:800,margin:'0 auto',display:'flex',justifyContent:'center',gap:'2.5rem',flexWrap:'wrap'}}>
+        <div style={{maxWidth:800,margin:'0 auto',display:'flex',justifyContent:'center',gap:'1.5rem 2.5rem',flexWrap:'wrap'}}>
           {STATS.map(s => (
             <div key={s.label} style={{textAlign:'center'}}>
               <div style={{fontSize:'1.5rem',fontWeight:800,color:'var(--primary)'}}>{s.value}</div>
