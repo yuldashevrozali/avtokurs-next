@@ -12,6 +12,7 @@ export async function POST(req) {
     const user = await User.findOne({ email });
     if (!user) return NextResponse.json({ message: 'Foydalanuvchi topilmadi' }, { status: 400 });
     if (!await bcrypt.compare(password, user.password)) return NextResponse.json({ message: "Parol noto'g'ri" }, { status: 400 });
+    if (user.status === 'pending') return NextResponse.json({ message: "Hisobingiz hali tasdiqlanmagan. Admin bilan bog'laning." }, { status: 403 });
 
     const sessionId = randomUUID();
     const userAgent = req.headers.get('user-agent') || "Noma'lum";

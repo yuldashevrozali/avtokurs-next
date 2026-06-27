@@ -9,6 +9,8 @@ const NAV_LINKS = [
   { href: '/imtihon', label: 'Imtihon' },
   { href: '/modules', label: 'Video darslar' },
   { href: '/oyin', label: "Haydash o'yini" },
+  { href: '/battle', label: '⚔️ 1vs1' },
+  { href: '/saqlangan', label: '🔖 Saqlangan' },
 ];
 
 export default function Navbar() {

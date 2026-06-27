@@ -20,6 +20,9 @@ export default function TopicTestPage() {
   const [userId, setUserId] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // Saved question IDs
+  const [savedIds, setSavedIds] = useState(new Set());
+
   // Notes: { [questionId]: noteText }
   const [notes, setNotes] = useState({});
   // Which question's note panel is open
@@ -38,6 +41,8 @@ export default function TopicTestPage() {
       setTopic(data.topic);
       setQuestions(data.questions);
       setLoading(false);
+      // Load saved question IDs
+      apiFetch('/saved').then(ids => setSavedIds(new Set(ids))).catch(() => {});
       // Load notes for all questions in this topic
       const qIds = data.questions.map(q => q.id).join(',');
       if (qIds) {
@@ -100,6 +105,26 @@ export default function TopicTestPage() {
     setNotePanel(null);
   }
 
+  async function toggleSave(questionId) {
+    const isSaved = savedIds.has(questionId);
+    // Optimistic update
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      isSaved ? next.delete(questionId) : next.add(questionId);
+      return next;
+    });
+    try {
+      await apiFetch('/saved', { method: 'POST', body: JSON.stringify({ questionId }) });
+    } catch {
+      // Rollback on error
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        isSaved ? next.add(questionId) : next.delete(questionId);
+        return next;
+      });
+    }
+  }
+
   if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
 
   const total = questions.length;
@@ -135,6 +160,7 @@ export default function TopicTestPage() {
   const correctIdx = q.variants.findIndex(v => v.is_correct);
   const hasNote = !!notes[q.id];
   const panelOpen = notePanel === q.id;
+  const isSaved = savedIds.has(q.id);
 
   return (
     <>
@@ -166,6 +192,19 @@ export default function TopicTestPage() {
             {/* Question text + 💡 button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
               <p style={{fontSize:'0.975rem',fontWeight:500,lineHeight:1.5,color:'var(--text)',flex:1,margin:0}}>{q.text.uz}</p>
+
+              {/* Save button */}
+              <button
+                onClick={() => toggleSave(q.id)}
+                title={isSaved ? "Saqlanganlardan o'chirish" : "Saqlash"}
+                style={{
+                  flexShrink: 0,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '1.25rem', lineHeight: 1, padding: '0.2rem 0.1rem',
+                  color: isSaved ? '#F59E0B' : 'var(--text-muted)',
+                  transition: 'color 0.15s, transform 0.1s',
+                }}
+              >🔖</button>
 
               {/* Show button: admin always, user only if note exists */}
               {(isAdmin || hasNote) && (

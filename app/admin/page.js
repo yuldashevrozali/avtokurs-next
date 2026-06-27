@@ -34,6 +34,7 @@ export default function AdminPage() {
   const [modules, setModules] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [users, setUsers] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
   const [selectedMod, setSelectedMod] = useState(null);
   const [showModForm, setShowModForm] = useState(false);
   const [showLesForm, setShowLesForm] = useState(false);
@@ -59,6 +60,7 @@ export default function AdminPage() {
     const user = JSON.parse(u);
     if (user.role !== 'admin') { router.push('/'); return; }
     loadModules();
+    apiFetch('/users').then(data => setPendingUsers(data.filter(u => u.status === 'pending'))).catch(() => {});
   }, []);
 
   async function loadModules() {
@@ -115,6 +117,22 @@ export default function AdminPage() {
     selectModule(selectedMod);
   }
 
+  async function loadPending() {
+    const data = await apiFetch('/users');
+    setPendingUsers(data.filter(u => u.status === 'pending'));
+  }
+
+  async function approveUser(id) {
+    await apiFetch(`/users/${id}/approve`, { method: 'POST' });
+    loadPending();
+  }
+
+  async function rejectUser(id) {
+    if (!confirm("Foydalanuvchini rad etib o'chirasizmi?")) return;
+    await apiFetch(`/users/${id}`, { method: 'DELETE' });
+    loadPending();
+  }
+
   async function changeRole(userId, role) {
     await apiFetch(`/users/${userId}/role`, { method: 'PUT', body: JSON.stringify({ role }) });
     loadUsers();
@@ -136,9 +154,15 @@ export default function AdminPage() {
           <h1 style={{fontSize:'1.4rem'}}>Admin panel</h1>
         </div>
 
-        <div style={{display:'flex',gap:0,borderBottom:'1px solid #E2E8F0',marginBottom:'1.5rem'}}>
+        <div style={{display:'flex',gap:0,borderBottom:'1px solid #E2E8F0',marginBottom:'1.5rem',flexWrap:'wrap'}}>
           <button style={tabStyle('modules')} onClick={() => setTab('modules')}>Modullar</button>
           <button style={tabStyle('users')} onClick={() => { setTab('users'); loadUsers(); }}>Foydalanuvchilar</button>
+          <button style={tabStyle('pending')} onClick={() => { setTab('pending'); loadPending(); }}>
+            Tasdiq kutmoqda
+            {pendingUsers.length > 0 && (
+              <span style={{marginLeft:'0.4rem',background:'#DC2626',color:'white',borderRadius:99,padding:'0.1rem 0.45rem',fontSize:'0.72rem',fontWeight:700}}>{pendingUsers.length}</span>
+            )}
+          </button>
         </div>
 
         {tab === 'modules' && (
@@ -231,12 +255,50 @@ export default function AdminPage() {
           </div>
         )}
 
+        {tab === 'pending' && (
+          <div>
+            {pendingUsers.length === 0 ? (
+              <div style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10,padding:'3rem',textAlign:'center'}}>
+                <div style={{fontSize:'2.5rem',marginBottom:'1rem'}}>✅</div>
+                <p style={{color:'#64748B'}}>Tasdiq kutayotgan foydalanuvchi yo'q</p>
+              </div>
+            ) : (
+              <div style={{display:'flex',flexDirection:'column',gap:'0.75rem'}}>
+                {pendingUsers.map(u => (
+                  <div key={u._id} style={{background:'white',border:'1.5px solid #FEF3C7',borderRadius:10,padding:'1rem 1.25rem',display:'flex',alignItems:'center',gap:'1rem',flexWrap:'wrap'}}>
+                    <div style={{flex:1,minWidth:180}}>
+                      <div style={{fontWeight:600,color:'#1E293B',fontSize:'0.95rem'}}>{u.name}</div>
+                      <div style={{fontSize:'0.82rem',color:'#64748B',marginTop:2}}>{u.email}</div>
+                      <div style={{fontSize:'0.75rem',color:'#94A3B8',marginTop:2}}>
+                        Ro'yxatdan: {new Date(u.createdAt).toLocaleString('uz-UZ')}
+                      </div>
+                    </div>
+                    <span style={{padding:'0.25rem 0.75rem',background:'#FEF9C3',color:'#713F12',borderRadius:99,fontSize:'0.78rem',fontWeight:600,whiteSpace:'nowrap'}}>
+                      ⏳ Tasdiq kutmoqda
+                    </span>
+                    <div style={{display:'flex',gap:'0.5rem'}}>
+                      <button onClick={() => approveUser(u._id)}
+                        style={{padding:'0.45rem 1rem',background:'#16A34A',color:'white',border:'none',borderRadius:6,fontWeight:600,cursor:'pointer',fontSize:'0.85rem'}}>
+                        ✓ Tasdiqlash
+                      </button>
+                      <button onClick={() => rejectUser(u._id)}
+                        style={{padding:'0.45rem 0.875rem',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FCA5A5',borderRadius:6,fontWeight:600,cursor:'pointer',fontSize:'0.85rem'}}>
+                        Rad etish
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {tab === 'users' && (
           <div className="table-scroll" style={{background:'white',border:'1px solid #E2E8F0',borderRadius:10}}>
             <table style={{width:'100%',borderCollapse:'collapse',minWidth:700}}>
               <thead>
                 <tr style={{background:'#F8FAFC',borderBottom:'1px solid #E2E8F0'}}>
-                  {['Ism','Email','Rol','Holat','Qurilma','Amal'].map(h=>(
+                  {['Ism','Email','Rol','Tasdiqlangan','Holat','Qurilma','Amal'].map(h=>(
                     <th key={h} style={{padding:'0.75rem 1rem',textAlign:'left',fontSize:'0.8rem',color:'#64748B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                   ))}
                 </tr>
@@ -257,6 +319,13 @@ export default function AdminPage() {
                           <option value="user">User</option>
                           <option value="admin">Admin</option>
                         </select>
+                      </td>
+                      <td style={{padding:'0.75rem 1rem'}}>
+                        {u.status === 'pending' ? (
+                          <span style={{fontSize:'0.78rem',background:'#FEF9C3',color:'#713F12',padding:'0.2rem 0.6rem',borderRadius:99,fontWeight:600,whiteSpace:'nowrap'}}>⏳ Kutmoqda</span>
+                        ) : (
+                          <span style={{fontSize:'0.78rem',background:'#DCFCE7',color:'#166534',padding:'0.2rem 0.6rem',borderRadius:99,fontWeight:600}}>✓ Faol</span>
+                        )}
                       </td>
                       <td style={{padding:'0.75rem 1rem'}}>
                         {d ? (

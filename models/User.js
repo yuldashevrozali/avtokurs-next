@@ -5,6 +5,8 @@ const s = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user','admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
+  battlePoints: { type: Number, default: 0 },
+  status: { type: String, enum: ['pending', 'active'] }, // undefined = mavjud (faol) userlar
   sessionId: { type: String, default: null },
   activeDevice: {
     userAgent: String,
