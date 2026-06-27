@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['A','B','C','D','E'];
 
@@ -30,6 +31,9 @@ export default function TopicTestPage() {
   const [editText, setEditText] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const textareaRef = useRef(null);
+
+  const { lang } = useLang();
+  const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -98,7 +102,7 @@ export default function TopicTestPage() {
   }
 
   async function deleteNote(questionId) {
-    if (!confirm("Izohni o'chirasizmi?")) return;
+    if (!confirm(t.note_del_confirm)) return;
     const token = localStorage.getItem('token');
     await fetch(`/api/notes/${questionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     setNotes(prev => { const n = { ...prev }; delete n[questionId]; return n; });
@@ -125,7 +129,7 @@ export default function TopicTestPage() {
     }
   }
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
+  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
 
   const total = questions.length;
   const pct = Math.round((idx / total) * 100);
@@ -138,17 +142,17 @@ export default function TopicTestPage() {
         <Navbar />
         <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,padding:'2.5rem 1.5rem',textAlign:'center'}}>
-            <h2 style={{fontSize:'1.3rem',marginBottom:'0.5rem',color:'var(--text)'}}>{pass ? 'Tabriklaymiz!' : "Yana o'qing"}</h2>
-            <p style={{color:'var(--text-muted)',marginBottom:'1rem'}}>{topic?.name.uz}</p>
+            <h2 style={{fontSize:'1.3rem',marginBottom:'0.5rem',color:'var(--text)'}}>{pass ? t.congrats : t.study_more}</h2>
+            <p style={{color:'var(--text-muted)',marginBottom:'1rem'}}>{topic?.name[lang] || topic?.name.uz}</p>
             <div style={{fontSize:'2.5rem',fontWeight:700,color:pass?'#16A34A':'#DC2626',margin:'1rem 0'}}>{score}%</div>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'2rem',flexWrap:'wrap'}}>
-              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.875rem'}}>To'g'ri: {correct}</span>
-              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.875rem'}}>Noto'g'ri: {total - correct}</span>
-              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DBEAFE',color:'#1E40AF',fontSize:'0.875rem'}}>Jami: {total}</span>
+              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.875rem'}}>{t.correct_l}: {correct}</span>
+              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.875rem'}}>{t.wrong_l}: {total - correct}</span>
+              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DBEAFE',color:'#1E40AF',fontSize:'0.875rem'}}>{t.total_l}: {total}</span>
             </div>
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center'}}>
-              <button onClick={restart} className="btn btn-primary">Qayta urinish</button>
-              <Link href="/mavzular" className="btn btn-outline">Mavzularga qaytish</Link>
+              <button onClick={restart} className="btn btn-primary">{t.restart}</button>
+              <Link href="/mavzular" className="btn btn-outline">{t.back_topics}</Link>
             </div>
           </div>
         </div>
@@ -169,7 +173,7 @@ export default function TopicTestPage() {
 
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
-          <Link href="/mavzular" style={{fontSize:'0.875rem',color:'var(--text-muted)',textDecoration:'none'}}>&larr; {topic?.name.uz}</Link>
+          <Link href="/mavzular" style={{fontSize:'0.875rem',color:'var(--text-muted)',textDecoration:'none'}}>&larr; {topic?.name[lang] || topic?.name.uz}</Link>
           <span style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>
             <strong style={{color:'var(--text)'}}>{idx+1}</strong> / {total}
           </span>
@@ -191,7 +195,7 @@ export default function TopicTestPage() {
 
             {/* Question text + 💡 button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
-              <p style={{fontSize:'0.975rem',fontWeight:500,lineHeight:1.5,color:'var(--text)',flex:1,margin:0}}>{q.text.uz}</p>
+              <p style={{fontSize:'0.975rem',fontWeight:500,lineHeight:1.5,color:'var(--text)',flex:1,margin:0}}>{q.text[lang] || q.text.uz}</p>
 
               {/* Save button */}
               <button
@@ -210,7 +214,7 @@ export default function TopicTestPage() {
               {(isAdmin || hasNote) && (
                 <button
                   onClick={() => openNotePanel(q.id)}
-                  title={hasNote ? 'Izohni ko\'rish' : 'Izoh qo\'shish'}
+                  title={hasNote ? t.note_edit : t.note_add}
                   style={{
                     flexShrink: 0,
                     display: 'flex', alignItems: 'center', gap: '0.3rem',
@@ -227,7 +231,7 @@ export default function TopicTestPage() {
                   }}
                 >
                   <span style={{fontSize:'1rem'}}>💡</span>
-                  <span>Izoh</span>
+                  <span>{t.note_l}</span>
                   {hasNote && !isAdmin && <span style={{width:6,height:6,borderRadius:'50%',background:'#F59E0B',display:'inline-block'}} />}
                 </button>
               )}
@@ -245,7 +249,7 @@ export default function TopicTestPage() {
                 <div style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.6rem 0.875rem',borderBottom:'1px solid #FDE68A',background:'#FEF3C7'}}>
                   <span style={{fontSize:'0.9rem'}}>💡</span>
                   <span style={{fontSize:'0.85rem',fontWeight:600,color:'#92400E'}}>
-                    {isAdmin ? (hasNote ? 'Izohni tahrirlash' : "Izoh qo'shish") : 'Izoh'}
+                    {isAdmin ? (hasNote ? t.note_edit : t.note_add) : t.note_l}
                   </span>
                   <button
                     onClick={() => setNotePanel(null)}
@@ -261,7 +265,7 @@ export default function TopicTestPage() {
                         ref={textareaRef}
                         value={editText}
                         onChange={e => setEditText(e.target.value)}
-                        placeholder="Bu savol bo'yicha izoh yozing..."
+                        placeholder={t.note_ph}
                         rows={3}
                         style={{
                           width:'100%', padding:'0.6rem 0.75rem',
@@ -278,21 +282,21 @@ export default function TopicTestPage() {
                           disabled={!editText.trim() || noteSaving}
                           style={{padding:'0.4rem 1rem',background:'#2563EB',color:'white',border:'none',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer',opacity:(!editText.trim()||noteSaving)?0.5:1}}
                         >
-                          {noteSaving ? 'Saqlanmoqda...' : 'Saqlash'}
+                          {noteSaving ? t.note_saving : t.note_save}
                         </button>
                         {hasNote && (
                           <button
                             onClick={() => deleteNote(q.id)}
                             style={{padding:'0.4rem 1rem',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FCA5A5',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer'}}
                           >
-                            O'chirish
+                            {t.note_del}
                           </button>
                         )}
                         <button
                           onClick={() => setNotePanel(null)}
                           style={{padding:'0.4rem 0.875rem',background:'var(--surface)',color:'var(--text-muted)',border:'1px solid var(--border)',borderRadius:6,fontSize:'0.85rem',cursor:'pointer'}}
                         >
-                          Bekor
+                          {t.cancel}
                         </button>
                       </div>
                     </>
@@ -324,7 +328,7 @@ export default function TopicTestPage() {
                       display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.75rem',fontWeight:600,flexShrink:0,color:'var(--text-muted)'}}>
                       {LABELS[i]}
                     </span>
-                    <span>{v.text.uz}</span>
+                    <span>{v.text[lang] || v.text.uz}</span>
                   </button>
                 );
               })}
@@ -334,10 +338,10 @@ export default function TopicTestPage() {
           {selected !== null && (
             <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',gap:'1rem'}}>
               <span style={{fontSize:'0.875rem',fontWeight:500,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
-                {selected === correctIdx ? "To'g'ri javob!" : "Noto'g'ri"}
+                {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < total ? 'Keyingi savol' : "Natijani ko'rish"}
+                {idx + 1 < total ? t.next_q : t.see_result}
               </button>
             </div>
           )}

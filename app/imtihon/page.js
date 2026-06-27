@@ -4,13 +4,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'];
-
-const MODES = [
-  { count: 50,  label: '50 ta savol', time: 50 * 60, desc: 'Tezkor mashq — 50 daqiqa' },
-  { count: 100, label: '100 ta savol', time: 100 * 60, desc: "To'liq tayyorlov — 100 daqiqa" },
-];
 
 export default function ImtihonPage() {
   const router = useRouter();
@@ -23,6 +19,13 @@ export default function ImtihonPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [savedIds, setSavedIds] = useState(new Set());
   const timerRef = useRef(null);
+  const { lang } = useLang();
+  const t = T[lang];
+
+  const MODES = [
+    { count: 50,  label: `50 ${t.q_count}`, time: 50 * 60, desc: `Tezkor mashq — 50 ${t.min_l}` },
+    { count: 100, label: `100 ${t.q_count}`, time: 100 * 60, desc: `To'liq tayyorlov — 100 ${t.min_l}` },
+  ];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -33,9 +36,9 @@ export default function ImtihonPage() {
   useEffect(() => {
     if (phase !== 'exam') return;
     timerRef.current = setInterval(() => {
-      setTimeLeft(t => {
-        if (t <= 1) { clearInterval(timerRef.current); finishExam(); return 0; }
-        return t - 1;
+      setTimeLeft(tm => {
+        if (tm <= 1) { clearInterval(timerRef.current); finishExam(); return 0; }
+        return tm - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
@@ -107,8 +110,8 @@ export default function ImtihonPage() {
         <Navbar />
         <div className="container" style={{maxWidth:680}}>
           <div style={{marginBottom:'2rem',textAlign:'center'}}>
-            <h1 style={{fontSize:'1.6rem',marginBottom:'0.4rem',color:'var(--text)'}}>Imtihon rejimi</h1>
-            <p style={{color:'var(--text-muted)'}}>Tasodifiy savollar bilan o'zingizni sinab ko'ring</p>
+            <h1 style={{fontSize:'1.6rem',marginBottom:'0.4rem',color:'var(--text)'}}>{t.exam_title}</h1>
+            <p style={{color:'var(--text-muted)'}}>{t.exam_sub}</p>
           </div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))',gap:'1.25rem'}}>
             {MODES.map(m => (
@@ -120,14 +123,14 @@ export default function ImtihonPage() {
                 <div style={{fontSize:'1rem',fontWeight:600,color:'var(--text)',marginBottom:'0.3rem'}}>{m.label}</div>
                 <div style={{fontSize:'0.875rem',color:'var(--text-muted)',marginBottom:'1.25rem'}}>{m.desc}</div>
                 <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                  <span style={{fontSize:'0.8rem',background:'#EFF6FF',color:'#1D4ED8',borderRadius:6,padding:'3px 8px'}}>{Math.floor(m.time/60)} daqiqa</span>
-                  <span style={{fontSize:'0.8rem',background:'#F0FDF4',color:'#15803D',borderRadius:6,padding:'3px 8px'}}>O'tish: 80%</span>
+                  <span style={{fontSize:'0.8rem',background:'#EFF6FF',color:'#1D4ED8',borderRadius:6,padding:'3px 8px'}}>{Math.floor(m.time/60)} {t.min_l}</span>
+                  <span style={{fontSize:'0.8rem',background:'#F0FDF4',color:'#15803D',borderRadius:6,padding:'3px 8px'}}>{t.pass_l}</span>
                 </div>
               </button>
             ))}
           </div>
           <p style={{marginTop:'1.5rem',fontSize:'0.85rem',color:'var(--text-muted)',textAlign:'center'}}>
-            Vaqt tugaganda imtihon avtomatik yakunlanadi
+            {t.timer_warn}
           </p>
         </div>
       </>
@@ -135,7 +138,7 @@ export default function ImtihonPage() {
   }
 
   if (phase === 'loading') {
-    return <><Navbar /><div className="container" style={{textAlign:'center',paddingTop:'4rem'}}><p style={{color:'var(--text-muted)'}}>Savollar tayyorlanmoqda...</p></div></>;
+    return <><Navbar /><div className="container" style={{textAlign:'center',paddingTop:'4rem'}}><p style={{color:'var(--text-muted)'}}>{t.exam_prep}</p></div></>;
   }
 
   if (phase === 'result') {
@@ -148,16 +151,16 @@ export default function ImtihonPage() {
         <Navbar />
         <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'2.5rem 1.5rem',textAlign:'center'}}>
-            <h2 style={{fontSize:'1.4rem',marginBottom:'0.4rem',color:'var(--text)'}}>{pass ? 'Ajoyib natija!' : "Ko'proq mashq qiling"}</h2>
-            <p style={{color:'var(--text-muted)',marginBottom:'1.25rem'}}>{total} ta savol · {mode?.label}</p>
+            <h2 style={{fontSize:'1.4rem',marginBottom:'0.4rem',color:'var(--text)'}}>{pass ? t.exam_great : t.exam_more}</h2>
+            <p style={{color:'var(--text-muted)',marginBottom:'1.25rem'}}>{total} {t.q_count} · {mode?.label}</p>
             <div style={{fontSize:'3.5rem',fontWeight:800,color:pass?'#16A34A':'#DC2626',margin:'0.5rem 0 1.25rem'}}>{score}%</div>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'2rem',flexWrap:'wrap'}}>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontWeight:500}}>To'g'ri: {correctCount}</span>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontWeight:500}}>Noto'g'ri: {total - correctCount}</span>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#F1F5F9',color:'var(--text-muted)',fontWeight:500}}>Javobsiz: {total - Object.keys(answers).length}</span>
+              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontWeight:500}}>{t.correct_l}: {correctCount}</span>
+              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontWeight:500}}>{t.wrong_l}: {total - correctCount}</span>
+              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#F1F5F9',color:'var(--text-muted)',fontWeight:500}}>{t.unanswered}: {total - Object.keys(answers).length}</span>
             </div>
             <div style={{textAlign:'left',marginBottom:'1.5rem'}}>
-              <p style={{fontSize:'0.8rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.6rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Savollar bo'yicha</p>
+              <p style={{fontSize:'0.8rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.6rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>{t.q_count}</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
                 {questions.map((_, i) => {
                   const a = answers[i];
@@ -173,8 +176,8 @@ export default function ImtihonPage() {
               </div>
             </div>
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
-              <button onClick={() => setPhase('select')} className="btn btn-primary">Qayta boshlash</button>
-              <Link href="/" className="btn btn-outline">Bosh sahifa</Link>
+              <button onClick={() => setPhase('select')} className="btn btn-primary">{t.exam_restart}</button>
+              <Link href="/" className="btn btn-outline">{t.home_l}</Link>
             </div>
           </div>
         </div>
@@ -198,7 +201,7 @@ export default function ImtihonPage() {
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem',gap:'1rem'}}>
           <div style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>
             <strong style={{color:'var(--text)'}}>{idx+1}</strong> / {questions.length}
-            <span style={{marginLeft:'0.75rem',color:'var(--text-muted)'}}>{answeredCount} javob berildi</span>
+            <span style={{marginLeft:'0.75rem',color:'var(--text-muted)'}}>{answeredCount} {t.answered}</span>
           </div>
           <div style={{
             display:'flex',alignItems:'center',gap:'0.4rem',
@@ -211,7 +214,7 @@ export default function ImtihonPage() {
             {formatTime(timeLeft)}
           </div>
           <button onClick={finishExam} className="btn btn-outline" style={{padding:'0.35rem 0.75rem',fontSize:'0.8rem'}}>
-            Yakunlash
+            {t.finish}
           </button>
         </div>
 
@@ -244,7 +247,7 @@ export default function ImtihonPage() {
           <div style={{padding:'1.25rem'}}>
             {/* Question text + save button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
-              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text.uz}</p>
+              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text[lang] || q.text.uz}</p>
               <button onClick={() => toggleSave(q.id)} title={isSaved ? "Saqlanganlardan o'chirish" : 'Saqlash'}
                 style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',fontSize:'1.25rem',lineHeight:1,padding:'0.1rem',
                   color:isSaved?'#F59E0B':'var(--text-muted)',transition:'color 0.15s'}}>
@@ -266,7 +269,7 @@ export default function ImtihonPage() {
                       display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.75rem',fontWeight:700,flexShrink:0,color:'var(--text-muted)'}}>
                       {LABELS[i]}
                     </span>
-                    <span>{v.text.uz}</span>
+                    <span>{v.text[lang] || v.text.uz}</span>
                   </button>
                 );
               })}
@@ -275,10 +278,10 @@ export default function ImtihonPage() {
           {selected !== null && (
             <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',gap:'1rem'}}>
               <span style={{fontSize:'0.875rem',fontWeight:600,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
-                {selected === correctIdx ? "To'g'ri javob!" : "Noto'g'ri"}
+                {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < questions.length ? 'Keyingi savol' : 'Yakunlash'}
+                {idx + 1 < questions.length ? t.next_q : t.finish}
               </button>
             </div>
           )}

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 export default function MavzularPage() {
   const [topics, setTopics] = useState([]);
@@ -11,6 +12,8 @@ export default function MavzularPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const router = useRouter();
+  const { lang } = useLang();
+  const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -25,22 +28,22 @@ export default function MavzularPage() {
     return raw ? JSON.parse(raw) : null;
   }
 
-  const doneCnt = topics.filter(t => { const p = getProgress(t.id); return p && p.percent >= 80; }).length;
-  const filtered = topics.filter(t => t.name.uz.toLowerCase().includes(search.toLowerCase()));
+  const doneCnt = topics.filter(tp => { const p = getProgress(tp.id); return p && p.percent >= 80; }).length;
+  const filtered = topics.filter(tp => (tp.name[lang] || tp.name.uz).toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
+  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
 
   return (
     <>
       <Navbar />
       <div className="container">
         <div style={{marginBottom:'1.5rem'}}>
-          <h1 style={{fontSize:'1.5rem',marginBottom:'0.3rem',color:'var(--text)'}}>Mavzular bo'yicha test</h1>
-          <p style={{color:'var(--text-muted)',fontSize:'0.9rem'}}>Har bir mavzuni alohida o'rganing</p>
+          <h1 style={{fontSize:'1.5rem',marginBottom:'0.3rem',color:'var(--text)'}}>{t.topics_title}</h1>
+          <p style={{color:'var(--text-muted)',fontSize:'0.9rem'}}>{t.topics_sub}</p>
         </div>
 
         <div style={{display:'flex',gap:'1rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
-          {[['Jami mavzular', topics.length],['Yakunlangan', doneCnt],['Jami savollar', 1220]].map(([label, val]) => (
+          {[[t.topics_total, topics.length],[t.topics_done, doneCnt],[t.topics_qs, 1220]].map(([label, val]) => (
             <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,padding:'0.6rem 1rem',fontSize:'0.85rem',color:'var(--text)'}}>
               {label}: <strong style={{color:'var(--primary)'}}>{val}</strong>
             </div>
@@ -50,7 +53,7 @@ export default function MavzularPage() {
         <div style={{marginBottom:'1.5rem'}}>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Mavzu nomini qidiring..."
+            placeholder={t.search_ph}
             style={{width:'100%',padding:'0.65rem 1rem',border:'1px solid var(--border)',borderRadius:8,fontSize:'0.9rem',background:'var(--surface)',color:'var(--text)'}}
           />
         </div>
@@ -67,8 +70,8 @@ export default function MavzularPage() {
                     {topic.id + 1}
                   </div>
                   <div>
-                    <div style={{fontSize:'0.9rem',fontWeight:600,lineHeight:1.4,color:'var(--text)'}}>{topic.name.uz}</div>
-                    <div style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>{topic.questionCount} ta savol</div>
+                    <div style={{fontSize:'0.9rem',fontWeight:600,lineHeight:1.4,color:'var(--text)'}}>{topic.name[lang] || topic.name.uz}</div>
+                    <div style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>{topic.questionCount} {t.q_count}</div>
                   </div>
                 </div>
                 <div className="progress-bar-wrap">
@@ -77,12 +80,12 @@ export default function MavzularPage() {
                 <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                   <div style={{fontSize:'0.8rem',color:'var(--text-muted)'}}>
                     {prog
-                      ? <><strong style={{color:'var(--text)'}}>{prog.correct}</strong>/{prog.total} to'g'ri · {pct}%</>
-                      : "Hali o'tilmagan"}
+                      ? <><strong style={{color:'var(--text)'}}>{prog.correct}</strong>/{prog.total} {t.correct_l.toLowerCase()} · {pct}%</>
+                      : t.not_done}
                   </div>
                   <Link href={`/mavzular/${topic.id}`}
                     style={{padding:'0.45rem 1rem',background:done?'#16A34A':'var(--primary)',color:'white',borderRadius:6,fontSize:'0.85rem',fontWeight:500,textDecoration:'none'}}>
-                    {done ? 'Qayta' : prog ? 'Davom' : 'Boshlash'}
+                    {done ? t.btn_restart : prog ? t.btn_continue : t.btn_start}
                   </Link>
                 </div>
               </div>

@@ -4,12 +4,15 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 export default function BiletlarPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const router = useRouter();
+  const { lang } = useLang();
+  const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -24,24 +27,24 @@ export default function BiletlarPage() {
     return raw ? JSON.parse(raw) : null;
   }
 
-  const doneCnt = tickets.filter(t => {
-    const p = getProgress(t.id);
+  const doneCnt = tickets.filter(tk => {
+    const p = getProgress(tk.id);
     return p && p.percent >= 80;
   }).length;
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
+  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
 
   return (
     <>
       <Navbar />
       <div className="container">
         <div style={{marginBottom:'1.5rem'}}>
-          <h1 style={{fontSize:'1.5rem',marginBottom:'0.3rem',color:'var(--text)'}}>Biletlar</h1>
-          <p style={{color:'var(--text-muted)',fontSize:'0.9rem'}}>Har bir biletda 20 ta savol — rasmiy imtihon shakli</p>
+          <h1 style={{fontSize:'1.5rem',marginBottom:'0.3rem',color:'var(--text)'}}>{t.tickets_title}</h1>
+          <p style={{color:'var(--text-muted)',fontSize:'0.9rem'}}>{t.tickets_sub}</p>
         </div>
 
         <div style={{display:'flex',gap:'1rem',marginBottom:'1.5rem',flexWrap:'wrap'}}>
-          {[['Jami biletlar', tickets.length], ['Yakunlangan (80%+)', doneCnt], ['Savol soni', 20]].map(([label, val]) => (
+          {[[t.tickets_total, tickets.length], [t.tickets_done_pct, doneCnt], [t.q_per_ticket, 20]].map(([label, val]) => (
             <div key={label} style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,padding:'0.6rem 1rem',fontSize:'0.85rem',color:'var(--text)'}}>
               {label}: <strong style={{color:'var(--primary)'}}>{val}</strong>
             </div>
@@ -60,7 +63,7 @@ export default function BiletlarPage() {
                 onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'}
                 onMouseLeave={e=>e.currentTarget.style.boxShadow='none'}>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                  <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>Bilet</span>
+                  <span style={{fontSize:'0.75rem',color:'var(--text-muted)',fontWeight:600,textTransform:'uppercase',letterSpacing:'0.05em'}}>{t.ticket_l}</span>
                   {done && <span style={{fontSize:'0.7rem',background:'#DCFCE7',color:'#166534',borderRadius:99,padding:'1px 6px'}}>✓</span>}
                   {started && !done && <span style={{fontSize:'0.7rem',background:'#DBEAFE',color:'#1E40AF',borderRadius:99,padding:'1px 6px'}}>{pct}%</span>}
                 </div>
@@ -69,7 +72,7 @@ export default function BiletlarPage() {
                   <div style={{height:'100%',borderRadius:99,background:done?'#16A34A':'var(--primary)',width:`${pct}%`,transition:'width 0.3s'}} />
                 </div>
                 <div style={{fontSize:'0.75rem',color:'var(--text-muted)'}}>
-                  {done ? "Bajarildi" : started ? `${prog.correct}/${prog.total} to'g'ri` : "20 ta savol"}
+                  {done ? t.done_l : started ? `${prog.correct}/${prog.total} ${t.correct_l.toLowerCase()}` : `20 ${t.q_count}`}
                 </div>
               </Link>
             );

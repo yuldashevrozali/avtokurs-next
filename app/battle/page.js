@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 export default function BattlePage() {
   const router = useRouter();
@@ -13,6 +14,8 @@ export default function BattlePage() {
   const [copied, setCopied] = useState(false);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
+  const { lang } = useLang();
+  const t = T[lang];
 
   useEffect(() => {
     const u = localStorage.getItem('user');
@@ -85,21 +88,21 @@ export default function BattlePage() {
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.5rem 1rem' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text)', margin: 0 }}>⚔️ 1 vs 1 Raqobat</h1>
-          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Do'stingiz bilan yoki random raqib bilan kurashing</p>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text)', margin: 0 }}>{t.battle_title}</h1>
+          <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>{t.battle_sub}</p>
         </div>
 
         {phase === 'menu' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
             <button onClick={startFriend} style={modeBtn('#3B82F6', '#1D4ED8')}>
               <span style={{ fontSize: '2.5rem' }}>🤝</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Sherik bilan</span>
-              <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>Havolani do'stingizga yuboring</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t.friend_mode}</span>
+              <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>{t.friend_desc}</span>
             </button>
             <button onClick={startRandom} style={modeBtn('#8B5CF6', '#6D28D9')}>
               <span style={{ fontSize: '2.5rem' }}>🎲</span>
-              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>Random</span>
-              <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>Tasodifiy raqib bilan</span>
+              <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>{t.random_mode}</span>
+              <span style={{ fontSize: '0.8rem', opacity: 0.85 }}>{t.random_desc}</span>
             </button>
           </div>
         )}
@@ -108,8 +111,8 @@ export default function BattlePage() {
           <div style={card}>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <div style={{ fontSize: '3rem' }}>🔗</div>
-              <h2 style={{ color: 'var(--text)', margin: '0.5rem 0' }}>Havolani yuboring</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Do'stingiz havolani ochsa, o'yin boshlanadi</p>
+              <h2 style={{ color: 'var(--text)', margin: '0.5rem 0' }}>{t.share_title}</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t.share_sub}</p>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
               <input
@@ -118,14 +121,14 @@ export default function BattlePage() {
                 style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.875rem', outline: 'none' }}
               />
               <button onClick={copyLink} style={{ padding: '0.6rem 1rem', background: copied ? '#16A34A' : '#3B82F6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.875rem' }}>
-                {copied ? '✓ Nusxalandi' : 'Nusxalash'}
+                {copied ? t.copied_l : t.copy_l}
               </button>
             </div>
             <button onClick={() => router.push(`/battle/${roomId}`)} style={{ width: '100%', padding: '0.75rem', background: '#3B82F6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}>
-              O'yinga kirish →
+              {t.go_game}
             </button>
             <button onClick={() => setPhase('menu')} style={{ width: '100%', marginTop: '0.5rem', padding: '0.6rem', background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: '0.875rem' }}>
-              Bekor qilish
+              {t.cancel}
             </button>
           </div>
         )}
@@ -133,14 +136,14 @@ export default function BattlePage() {
         {phase === 'random-waiting' && (
           <div style={{ ...card, textAlign: 'center' }}>
             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>⏳</div>
-            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>Raqobatchi axtarilmoqda...</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>30 soniya ichida topilmasa bekor bo'ladi</p>
+            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>{t.searching}</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{t.searching_sub}</p>
             <div style={{ width: 80, height: 80, borderRadius: '50%', background: countdown > 10 ? '#3B82F6' : '#EF4444', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.75rem', fontWeight: 700, margin: '0 auto 1.5rem' }}>
               {countdown}
             </div>
             <button onClick={() => { clearInterval(pollRef.current); clearInterval(timerRef.current); setPhase('menu'); }}
               style={{ padding: '0.6rem 1.5rem', background: 'var(--surface)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: '0.875rem' }}>
-              Bekor qilish
+              {t.cancel}
             </button>
           </div>
         )}
@@ -148,19 +151,19 @@ export default function BattlePage() {
         {phase === 'random-timeout' && (
           <div style={{ ...card, textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>😕</div>
-            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>Raqobatchi topilmadi</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Hozir boshqa foydalanuvchi yo'q. Keyinroq urinib ko'ring.</p>
+            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>{t.not_found}</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{t.not_found_s}</p>
             <button onClick={() => setPhase('menu')} style={{ padding: '0.75rem 2rem', background: '#8B5CF6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}>
-              Qayta urinish
+              {t.retry_l}
             </button>
           </div>
         )}
 
         {/* Leaderboard */}
         <div style={{ ...card, marginTop: '1.5rem' }}>
-          <h3 style={{ margin: '0 0 1rem', color: 'var(--text)', fontSize: '1rem', fontWeight: 700 }}>🏆 Eng yaxshi o'yinchilar</h3>
+          <h3 style={{ margin: '0 0 1rem', color: 'var(--text)', fontSize: '1rem', fontWeight: 700 }}>🏆 {t.top_players}</h3>
           {leaderboard.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>Hali o'yinlar bo'lmagan</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textAlign: 'center', padding: '1rem 0' }}>{t.no_games}</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {leaderboard.map((u, i) => (
@@ -170,7 +173,7 @@ export default function BattlePage() {
                   </span>
                   <span style={{ flex: 1, color: 'var(--text)', fontWeight: i < 3 ? 600 : 400, fontSize: '0.9rem' }}>{u.name}</span>
                   <span style={{ fontWeight: 700, color: u.battlePoints >= 0 ? '#16A34A' : '#DC2626', fontSize: '0.9rem' }}>
-                    {u.battlePoints > 0 ? '+' : ''}{u.battlePoints} ochko
+                    {u.battlePoints > 0 ? '+' : ''}{u.battlePoints} {t.pts_l}
                   </span>
                 </div>
               ))}

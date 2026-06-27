@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'];
 
@@ -23,6 +24,8 @@ export default function BattleRoomPage() {
   const [copied, setCopied] = useState(false);
   const [myId, setMyId] = useState('');
   const [myName, setMyName] = useState('');
+  const { lang } = useLang();
+  const t = T[lang];
 
   const pollRef = useRef(null);
   const timerRef = useRef(null);
@@ -153,7 +156,7 @@ export default function BattleRoomPage() {
         setSelected(null);
         setLastResult(null);
       }, 1200);
-    } catch (e) {
+    } catch {
       setSelected(null);
     }
   }
@@ -164,11 +167,11 @@ export default function BattleRoomPage() {
     return `${m}:${sec}`;
   }
 
-  function fmtFinishTime(room, isP1) {
-    if (!room?.startedAt) return '-';
-    const player = isP1 ? room.p1 : room.p2;
+  function fmtFinishTime(rm, isP1) {
+    if (!rm?.startedAt) return '-';
+    const player = isP1 ? rm.p1 : rm.p2;
     if (!player?.finishedAt) return '-';
-    const ms = new Date(player.finishedAt) - new Date(room.startedAt);
+    const ms = new Date(player.finishedAt) - new Date(rm.startedAt);
     return fmtTime(Math.floor(ms / 1000));
   }
 
@@ -187,7 +190,7 @@ export default function BattleRoomPage() {
         <Navbar />
         <div style={{ maxWidth: 600, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
-          <p style={{ color: 'var(--text-muted)' }}>{phase === 'joining' ? 'O\'yinga qo\'shilmoqda...' : 'Yuklanmoqda...'}</p>
+          <p style={{ color: 'var(--text-muted)' }}>{phase === 'joining' ? t.joining : t.loading}</p>
         </div>
       </>
     );
@@ -200,9 +203,9 @@ export default function BattleRoomPage() {
         <Navbar />
         <div style={{ maxWidth: 600, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❌</div>
-          <h2 style={{ color: 'var(--text)' }}>Xona topilmadi</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Bu xona to'la yoki mavjud emas</p>
-          <Link href="/battle" className="btn btn-primary">Raqobatga qaytish</Link>
+          <h2 style={{ color: 'var(--text)' }}>{t.room_404}</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{t.room_full}</p>
+          <Link href="/battle" className="btn btn-primary">{t.back_battle}</Link>
         </div>
       </>
     );
@@ -217,24 +220,24 @@ export default function BattleRoomPage() {
         <div style={{ maxWidth: 520, margin: '3rem auto', padding: '1rem' }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
             <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🔗</div>
-            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>Do'stingizni kutmoqda...</h2>
+            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>{t.waiting_friend}</h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              Havolani do'stingizga yuboring. U kirgach o'yin boshlanadi.
+              {t.waiting_sub}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
               <input readOnly value={link}
                 style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', minWidth: 0 }} />
               <button onClick={copyLink}
                 style={{ padding: '0.6rem 1rem', background: copied ? '#16A34A' : '#3B82F6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                {copied ? '✓' : 'Nusxa'}
+                {copied ? '✓' : t.copy_short}
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', justifyContent: 'center' }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-              Raqib kutilmoqda...
+              {t.opp_wait}
             </div>
             <Link href="/battle" style={{ display: 'block', marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none' }}>
-              ← Raqobatga qaytish
+              ← {t.back_battle}
             </Link>
           </div>
         </div>
@@ -261,20 +264,20 @@ export default function BattleRoomPage() {
             <div style={{ padding: '2rem', background: iWon ? 'linear-gradient(135deg,#16A34A,#15803D)' : 'linear-gradient(135deg,#DC2626,#B91C1C)', color: 'white' }}>
               <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>{iWon ? '🏆' : '😔'}</div>
               <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>
-                {iWon ? 'Siz yutdingiz!' : 'Siz yutqazdingiz'}
+                {iWon ? t.you_won : t.you_lost}
               </h2>
               <p style={{ margin: '0.5rem 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
-                {iWon ? '+5 ochko qo\'shildi' : '−5 ochko ayirildi'}
+                {iWon ? t.pts_plus : t.pts_minus}
               </p>
             </div>
             <div style={{ padding: '1.5rem' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
                 {[
-                  { label: myData?.name || 'Siz', data: myData, time: myTime, isMe: true },
-                  { label: oppData?.name || 'Raqib', data: oppData, time: oppTime, isMe: false },
+                  { label: myData?.name || t.you_l, data: myData, time: myTime, isMe: true },
+                  { label: oppData?.name || t.opp_l, data: oppData, time: oppTime, isMe: false },
                 ].map(({ label, data: pd, time, isMe }) => (
                   <div key={label} style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 10, border: `2px solid ${isMe ? '#3B82F6' : 'var(--border)'}` }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{isMe ? '👤 Siz' : '👤 Raqib'}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{isMe ? t.you_l : t.opp_l}</div>
                     <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>{label}</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16A34A' }}>{pd?.correctCount ?? 0}/20</div>
                     <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>⏱ {time}</div>
@@ -284,14 +287,14 @@ export default function BattleRoomPage() {
 
               {myData?.correctCount === oppData?.correctCount && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  * Teng natija — tezroq tugallagan yutdi
+                  {t.tie_note}
                 </p>
               )}
 
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link href="/battle" className="btn btn-primary">Qayta o'ynash</Link>
+                <Link href="/battle" className="btn btn-primary">{t.rematch}</Link>
                 <Link href="/" style={{ padding: '0.6rem 1.25rem', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', textDecoration: 'none', fontSize: '0.9rem' }}>
-                  Bosh sahifa
+                  {t.home_l}
                 </Link>
               </div>
             </div>
@@ -302,7 +305,7 @@ export default function BattleRoomPage() {
   }
 
   // ── PLAYING ──
-  if (!q) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>Yuklanmoqda...</p></div></>;
+  if (!q) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
 
   const myDone = myStats.answeredCount >= 20;
 
@@ -315,8 +318,8 @@ export default function BattleRoomPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.875rem 1rem' }}>
           {/* Me */}
           <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>👤 Siz</div>
-            <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{myName || 'Siz'}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{t.you_l}</div>
+            <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{myName || t.you_l}</div>
             <ProgressBar done={myStats.answeredCount} correct={myStats.correctCount} />
           </div>
 
@@ -328,7 +331,7 @@ export default function BattleRoomPage() {
 
           {/* Opponent */}
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>👤 Raqib</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{t.opp_l}</div>
             <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{oppStats.name || '...'}</div>
             <ProgressBar done={oppStats.answeredCount} correct={oppStats.correctCount} reverse />
           </div>
@@ -337,7 +340,7 @@ export default function BattleRoomPage() {
         {/* Waiting for opponent after finishing */}
         {myDone && (
           <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE047', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', textAlign: 'center', color: '#713F12', fontSize: '0.875rem', fontWeight: 500 }}>
-            ⏳ Raqib tugashini kutmoqda... ({oppStats.answeredCount}/20 javoblangan)
+            ⏳ {t.wait_done} ({oppStats.answeredCount}/20 {t.answered})
           </div>
         )}
 
@@ -346,7 +349,7 @@ export default function BattleRoomPage() {
           {/* Q number */}
           <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Savol <strong style={{ color: 'var(--text)' }}>{qIdx + 1}</strong> / {questions.length}
+              {t.q_l} <strong style={{ color: 'var(--text)' }}>{qIdx + 1}</strong> / {questions.length}
             </span>
             {/* mini progress dots */}
             <div style={{ display: 'flex', gap: 3 }}>
@@ -361,7 +364,7 @@ export default function BattleRoomPage() {
           )}
 
           <div style={{ padding: '1.25rem' }}>
-            <p style={{ fontSize: '1rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1.1rem' }}>{q.text.uz}</p>
+            <p style={{ fontSize: '1rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1.1rem' }}>{q.text[lang] || q.text.uz}</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
               {q.variants.map((v, i) => {
@@ -379,7 +382,7 @@ export default function BattleRoomPage() {
                     <span style={{ minWidth: 22, height: 22, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0, color: 'var(--text-muted)' }}>
                       {LABELS[i]}
                     </span>
-                    {v.text.uz}
+                    {v.text[lang] || v.text.uz}
                   </button>
                 );
               })}
@@ -389,7 +392,7 @@ export default function BattleRoomPage() {
               <div style={{ marginTop: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.875rem', borderRadius: 8, background: lastResult.isCorrect ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${lastResult.isCorrect ? '#86EFAC' : '#FCA5A5'}` }}>
                 <span style={{ fontSize: '1.2rem' }}>{lastResult.isCorrect ? '✅' : '❌'}</span>
                 <span style={{ fontWeight: 600, color: lastResult.isCorrect ? '#166534' : '#991B1B', fontSize: '0.9rem' }}>
-                  {lastResult.isCorrect ? "To'g'ri javob!" : "Noto'g'ri"}
+                  {lastResult.isCorrect ? t.correct : t.wrong}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   {myStats.correctCount}/{myStats.answeredCount} ✓

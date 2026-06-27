@@ -2,16 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-
-const NAV_LINKS = [
-  { href: '/mavzular', label: 'Mavzular' },
-  { href: '/biletlar', label: 'Biletlar' },
-  { href: '/imtihon', label: 'Imtihon' },
-  { href: '/modules', label: 'Video darslar' },
-  { href: '/oyin', label: "Haydash o'yini" },
-  { href: '/battle', label: '⚔️ 1vs1' },
-  { href: '/saqlangan', label: '🔖 Saqlangan' },
-];
+import { useLang, T } from '@/lib/lang';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -19,6 +10,18 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  const { lang, setLang } = useLang();
+  const t = T[lang];
+
+  const NAV_LINKS = [
+    { href: '/mavzular', label: t.topics },
+    { href: '/biletlar', label: t.tickets },
+    { href: '/imtihon', label: t.exam },
+    { href: '/modules', label: t.videos },
+    { href: '/oyin', label: t.game },
+    { href: '/battle', label: t.battle },
+    { href: '/saqlangan', label: t.saved },
+  ];
 
   useEffect(() => {
     const u = localStorage.getItem('user');
@@ -88,20 +91,26 @@ export default function Navbar() {
               </Link>
             ))}
             {user.role === 'admin' && (
-              <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={close}>Admin</Link>
+              <Link href="/admin" className={pathname === '/admin' ? 'active' : ''} onClick={close}>{t.admin}</Link>
             )}
             <span style={{fontSize:'0.85rem',color:'var(--text-muted)',whiteSpace:'nowrap'}}>{user.name}</span>
-            <button className="btn-nav" onClick={logout}>Chiqish</button>
+            <button className="btn-nav" onClick={logout}>{t.logout}</button>
           </>
         ) : (
-          <Link href="/login" onClick={close}>Kirish</Link>
+          <Link href="/login" onClick={close}>{t.login}</Link>
         )}
       </div>
 
-      {/* Theme toggle + hamburger — always on the right */}
+      {/* Theme toggle + lang toggle + hamburger — always on the right */}
       <div className="nav-right">
         <button onClick={toggleTheme} className="theme-toggle" title={dark ? 'Kunduzgi rejim' : 'Tungi rejim'}>
           {dark ? '☀' : '☾'}
+        </button>
+        <button onClick={() => setLang(lang === 'uz' ? 'uz_cryl' : 'uz')}
+          className="theme-toggle"
+          title={lang === 'uz' ? "Кирилга ўтиш" : "Lotinga o'tish"}
+          style={{fontWeight:700, fontSize:'0.8rem', letterSpacing:'0.03em'}}>
+          {lang === 'uz' ? 'КР' : 'UZ'}
         </button>
         <button
           className="hamburger"

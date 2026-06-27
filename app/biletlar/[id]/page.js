@@ -4,6 +4,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'];
 
@@ -19,6 +20,8 @@ export default function BiletTestPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [savedIds, setSavedIds] = useState(new Set());
+  const { lang } = useLang();
+  const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -84,7 +87,7 @@ export default function BiletTestPage() {
     setDone(false);
   }
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
+  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
 
   if (done) {
     const total = questions.length;
@@ -96,15 +99,15 @@ export default function BiletTestPage() {
         <Navbar />
         <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
           <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'2.5rem 1.5rem',textAlign:'center'}}>
-            <h2 style={{fontSize:'1.4rem',marginBottom:'0.5rem',color:'var(--text)'}}>{pass ? 'Tabriklaymiz!' : "Ko'proq mashq qiling"}</h2>
-            <p style={{color:'var(--text-muted)',marginBottom:'1.25rem'}}>Bilet #{ticket?.number} · 20 ta savol</p>
+            <h2 style={{fontSize:'1.4rem',marginBottom:'0.5rem',color:'var(--text)'}}>{pass ? t.congrats : t.exam_more}</h2>
+            <p style={{color:'var(--text-muted)',marginBottom:'1.25rem'}}>{t.ticket_l} #{ticket?.number} · 20 {t.q_count}</p>
             <div style={{fontSize:'3rem',fontWeight:800,color:pass?'#16A34A':'#DC2626',margin:'0.75rem 0'}}>{score}%</div>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'2rem',flexWrap:'wrap'}}>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.9rem',fontWeight:500}}>To'g'ri: {correctCount}</span>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.9rem',fontWeight:500}}>Noto'g'ri: {total - correctCount}</span>
+              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.9rem',fontWeight:500}}>{t.correct_l}: {correctCount}</span>
+              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.9rem',fontWeight:500}}>{t.wrong_l}: {total - correctCount}</span>
             </div>
             <div style={{textAlign:'left',marginBottom:'1.5rem'}}>
-              <p style={{fontSize:'0.85rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Natijalar</p>
+              <p style={{fontSize:'0.85rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>{t.results_l}</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
                 {questions.map((_, i) => {
                   const a = answers[i];
@@ -122,8 +125,8 @@ export default function BiletTestPage() {
               </div>
             </div>
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
-              <button onClick={restart} className="btn btn-primary">Qayta urinish</button>
-              <Link href="/biletlar" className="btn btn-outline">Biletlarga qaytish</Link>
+              <button onClick={restart} className="btn btn-primary">{t.restart}</button>
+              <Link href="/biletlar" className="btn btn-outline">{t.back_tickets}</Link>
             </div>
           </div>
         </div>
@@ -144,8 +147,8 @@ export default function BiletTestPage() {
       <div style={{maxWidth:760,margin:'0 auto',padding:'1.5rem 1rem'}}>
 
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem',gap:'0.5rem',flexWrap:'wrap'}}>
-          <Link href="/biletlar" style={{fontSize:'0.875rem',color:'var(--text-muted)',textDecoration:'none'}}>&#8592; Biletlar</Link>
-          <span style={{fontSize:'0.95rem',fontWeight:600,color:'var(--text)'}}>Bilet #{ticket?.number}</span>
+          <Link href="/biletlar" style={{fontSize:'0.875rem',color:'var(--text-muted)',textDecoration:'none'}}>&#8592; {t.tickets_title}</Link>
+          <span style={{fontSize:'0.95rem',fontWeight:600,color:'var(--text)'}}>{t.ticket_l} #{ticket?.number}</span>
           <span style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>
             <strong style={{color:'var(--text)'}}>{idx+1}</strong> / {questions.length}
           </span>
@@ -180,7 +183,7 @@ export default function BiletTestPage() {
           <div style={{padding:'1.25rem'}}>
             {/* Question text + save button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
-              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text.uz}</p>
+              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text[lang] || q.text.uz}</p>
               <button onClick={() => toggleSave(q.id)} title={isSaved ? "Saqlanganlardan o'chirish" : 'Saqlash'}
                 style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',fontSize:'1.25rem',lineHeight:1,padding:'0.1rem',
                   color:isSaved?'#F59E0B':'var(--text-muted)',transition:'color 0.15s'}}>
@@ -202,7 +205,7 @@ export default function BiletTestPage() {
                       display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.75rem',fontWeight:700,flexShrink:0,color:'var(--text-muted)'}}>
                       {LABELS[i]}
                     </span>
-                    <span>{v.text.uz}</span>
+                    <span>{v.text[lang] || v.text.uz}</span>
                   </button>
                 );
               })}
@@ -211,17 +214,17 @@ export default function BiletTestPage() {
           {selected !== null && (
             <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',gap:'1rem'}}>
               <span style={{fontSize:'0.875rem',fontWeight:600,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
-                {selected === correctIdx ? "To'g'ri javob!" : "Noto'g'ri"}
+                {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < questions.length ? 'Keyingi savol' : 'Natijani ko\'rish'}
+                {idx + 1 < questions.length ? t.next_q : t.see_result}
               </button>
             </div>
           )}
         </div>
 
         <div style={{marginTop:'0.75rem',fontSize:'0.8rem',color:'var(--text-muted)',textAlign:'center'}}>
-          {answeredCount} ta javob berildi · {questions.length - answeredCount} ta qoldi
+          {answeredCount} {t.answered} · {questions.length - answeredCount} {t.unanswered.toLowerCase()}
         </div>
       </div>
     </>
