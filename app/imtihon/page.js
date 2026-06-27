@@ -21,11 +21,13 @@ export default function ImtihonPage() {
   const [answers, setAnswers] = useState({});
   const [selected, setSelected] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [savedIds, setSavedIds] = useState(new Set());
   const timerRef = useRef(null);
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/login'); }
+    if (!raw) { router.push('/login'); return; }
+    apiFetch('/saved').then(ids => setSavedIds(new Set(ids))).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -49,6 +51,24 @@ export default function ImtihonPage() {
     setSelected(null);
     setTimeLeft(m.time);
     setPhase('exam');
+  }
+
+  async function toggleSave(questionId) {
+    const isSaved = savedIds.has(questionId);
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      isSaved ? next.delete(questionId) : next.add(questionId);
+      return next;
+    });
+    try {
+      await apiFetch('/saved', { method: 'POST', body: JSON.stringify({ questionId }) });
+    } catch {
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        isSaved ? next.add(questionId) : next.delete(questionId);
+        return next;
+      });
+    }
   }
 
   function select(i) {
@@ -100,12 +120,8 @@ export default function ImtihonPage() {
                 <div style={{fontSize:'1rem',fontWeight:600,color:'var(--text)',marginBottom:'0.3rem'}}>{m.label}</div>
                 <div style={{fontSize:'0.875rem',color:'var(--text-muted)',marginBottom:'1.25rem'}}>{m.desc}</div>
                 <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                  <span style={{fontSize:'0.8rem',background:'#EFF6FF',color:'#1D4ED8',borderRadius:6,padding:'3px 8px'}}>
-                    {Math.floor(m.time/60)} daqiqa
-                  </span>
-                  <span style={{fontSize:'0.8rem',background:'#F0FDF4',color:'#15803D',borderRadius:6,padding:'3px 8px'}}>
-                    O'tish: 80%
-                  </span>
+                  <span style={{fontSize:'0.8rem',background:'#EFF6FF',color:'#1D4ED8',borderRadius:6,padding:'3px 8px'}}>{Math.floor(m.time/60)} daqiqa</span>
+                  <span style={{fontSize:'0.8rem',background:'#F0FDF4',color:'#15803D',borderRadius:6,padding:'3px 8px'}}>O'tish: 80%</span>
                 </div>
               </button>
             ))}
@@ -140,8 +156,6 @@ export default function ImtihonPage() {
               <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontWeight:500}}>Noto'g'ri: {total - correctCount}</span>
               <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#F1F5F9',color:'var(--text-muted)',fontWeight:500}}>Javobsiz: {total - Object.keys(answers).length}</span>
             </div>
-
-            {/* Mini result grid */}
             <div style={{textAlign:'left',marginBottom:'1.5rem'}}>
               <p style={{fontSize:'0.8rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.6rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Savollar bo'yicha</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
@@ -158,7 +172,6 @@ export default function ImtihonPage() {
                 })}
               </div>
             </div>
-
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
               <button onClick={() => setPhase('select')} className="btn btn-primary">Qayta boshlash</button>
               <Link href="/" className="btn btn-outline">Bosh sahifa</Link>
@@ -175,13 +188,13 @@ export default function ImtihonPage() {
   const correctIdx = q.variants.findIndex(v => v.is_correct);
   const answeredCount = Object.keys(answers).length;
   const pct = Math.round((idx / questions.length) * 100);
+  const isSaved = savedIds.has(q.id);
 
   return (
     <>
       <Navbar />
       <div style={{maxWidth:760,margin:'0 auto',padding:'1rem 1rem'}}>
 
-        {/* Top bar: timer + progress */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem',gap:'1rem'}}>
           <div style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>
             <strong style={{color:'var(--text)'}}>{idx+1}</strong> / {questions.length}
@@ -202,12 +215,10 @@ export default function ImtihonPage() {
           </button>
         </div>
 
-        {/* Progress bar */}
         <div className="progress-bar-wrap" style={{marginBottom:'0.5rem'}}>
           <div style={{height:'100%',borderRadius:99,background:'var(--primary)',width:`${pct}%`,transition:'width 0.3s'}} />
         </div>
 
-        {/* Mini map */}
         <div style={{display:'flex',gap:3,flexWrap:'wrap',marginBottom:'1rem'}}>
           {questions.map((_, i) => {
             const a = answers[i];
@@ -225,19 +236,24 @@ export default function ImtihonPage() {
           })}
         </div>
 
-        {/* Question */}
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
           {q.image_url && (
             <img src={q.image_url} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',background:'var(--bg)',display:'block'}}
               onError={e=>e.target.style.display='none'} />
           )}
           <div style={{padding:'1.25rem'}}>
-            <p style={{fontSize:'0.975rem',fontWeight:500,marginBottom:'1.1rem',lineHeight:1.55,color:'var(--text)'}}>{q.text.uz}</p>
+            {/* Question text + save button */}
+            <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
+              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text.uz}</p>
+              <button onClick={() => toggleSave(q.id)} title={isSaved ? "Saqlanganlardan o'chirish" : 'Saqlash'}
+                style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',fontSize:'1.25rem',lineHeight:1,padding:'0.1rem',
+                  color:isSaved?'#F59E0B':'var(--text-muted)',transition:'color 0.15s'}}>
+                🔖
+              </button>
+            </div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.6rem'}}>
               {q.variants.map((v, i) => {
-                let bg = 'var(--surface)';
-                let border = '1.5px solid var(--border)';
-                let color = 'var(--text)';
+                let bg = 'var(--surface)', border = '1.5px solid var(--border)', color = 'var(--text)';
                 if (selected !== null) {
                   if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
                   if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }

@@ -9,7 +9,8 @@ const LABELS = ['A', 'B', 'C', 'D', 'E'];
 
 export default function SavedPage() {
   const router = useRouter();
-  const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]);   // asl ro'yxat (list uchun)
+  const [testQueue, setTestQueue] = useState([]);   // shuffled (test uchun)
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('list'); // list | test
   const [qIdx, setQIdx] = useState(0);
@@ -38,6 +39,9 @@ export default function SavedPage() {
   }
 
   function startTest() {
+    // Har safar yangi random tartibda
+    const shuffled = [...questions].sort(() => Math.random() - 0.5);
+    setTestQueue(shuffled);
     setMode('test');
     setQIdx(0);
     setSelected(null);
@@ -48,18 +52,22 @@ export default function SavedPage() {
   function selectAnswer(i) {
     if (selected !== null) return;
     setSelected(i);
-    const q = questions[qIdx];
+    const q = testQueue[qIdx];
     const correctIdx = q.variants.findIndex(v => v.is_correct);
     if (i === correctIdx) setCorrect(c => c + 1);
   }
 
   function next() {
-    if (qIdx + 1 >= questions.length) { setDone(true); return; }
+    if (qIdx + 1 >= testQueue.length) { setDone(true); return; }
     setQIdx(i => i + 1);
     setSelected(null);
   }
 
-  function restart() { setQIdx(0); setSelected(null); setCorrect(0); setDone(false); }
+  function restart() {
+    const shuffled = [...questions].sort(() => Math.random() - 0.5);
+    setTestQueue(shuffled);
+    setQIdx(0); setSelected(null); setCorrect(0); setDone(false);
+  }
 
   if (loading) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>Yuklanmoqda...</p></div></>;
 
@@ -128,7 +136,7 @@ export default function SavedPage() {
 
   // ── TEST DONE ──
   if (done) {
-    const pct = Math.round((correct / questions.length) * 100);
+    const pct = Math.round((correct / testQueue.length) * 100);
     const pass = pct >= 80;
     return (
       <>
@@ -139,7 +147,7 @@ export default function SavedPage() {
             <h2 style={{ color: 'var(--text)', marginBottom: '1rem' }}>{pass ? 'Yaxshi!' : 'Yana mashq qiling'}</h2>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem', flexWrap: 'wrap' }}>
               <span style={{ padding: '0.5rem 1rem', borderRadius: 8, background: '#DCFCE7', color: '#166534', fontSize: '0.875rem' }}>To'g'ri: {correct}</span>
-              <span style={{ padding: '0.5rem 1rem', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: '0.875rem' }}>Noto'g'ri: {questions.length - correct}</span>
+              <span style={{ padding: '0.5rem 1rem', borderRadius: 8, background: '#FEE2E2', color: '#991B1B', fontSize: '0.875rem' }}>Noto'g'ri: {testQueue.length - correct}</span>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={restart} className="btn btn-primary">Qayta urinish</button>
@@ -152,9 +160,9 @@ export default function SavedPage() {
   }
 
   // ── TEST MODE ──
-  const q = questions[qIdx];
-  const correctIdx = q.variants.findIndex(v => v.is_correct);
-  const pct = Math.round((qIdx / questions.length) * 100);
+  const q = testQueue[qIdx];
+  const correctIdx = q?.variants.findIndex(v => v.is_correct) ?? -1;
+  const pct = Math.round((qIdx / testQueue.length) * 100);
 
   return (
     <>
@@ -165,7 +173,7 @@ export default function SavedPage() {
             ← Ro'yxatga qaytish
           </button>
           <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text)' }}>{qIdx + 1}</strong> / {questions.length}
+            <strong style={{ color: 'var(--text)' }}>{qIdx + 1}</strong> / {testQueue.length}
           </span>
         </div>
 

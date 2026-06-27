@@ -18,6 +18,7 @@ export default function BiletTestPage() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
+  const [savedIds, setSavedIds] = useState(new Set());
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -28,7 +29,26 @@ export default function BiletTestPage() {
       setQuestions(data.questions);
       setLoading(false);
     });
+    apiFetch('/saved').then(ids => setSavedIds(new Set(ids))).catch(() => {});
   }, [id]);
+
+  async function toggleSave(questionId) {
+    const isSaved = savedIds.has(questionId);
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      isSaved ? next.delete(questionId) : next.add(questionId);
+      return next;
+    });
+    try {
+      await apiFetch('/saved', { method: 'POST', body: JSON.stringify({ questionId }) });
+    } catch {
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        isSaved ? next.add(questionId) : next.delete(questionId);
+        return next;
+      });
+    }
+  }
 
   function select(i) {
     if (selected !== null) return;
@@ -83,8 +103,6 @@ export default function BiletTestPage() {
               <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.9rem',fontWeight:500}}>To'g'ri: {correctCount}</span>
               <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.9rem',fontWeight:500}}>Noto'g'ri: {total - correctCount}</span>
             </div>
-
-            {/* Question review */}
             <div style={{textAlign:'left',marginBottom:'1.5rem'}}>
               <p style={{fontSize:'0.85rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.75rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>Natijalar</p>
               <div style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>
@@ -95,8 +113,7 @@ export default function BiletTestPage() {
                     <div key={i} onClick={() => { setIdx(i); setSelected(answers[i]?.selected ?? null); setDone(false); }}
                       style={{width:32,height:32,borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',
                         fontSize:'0.8rem',fontWeight:600,cursor:'pointer',
-                        background:ok?'#DCFCE7':'#FEE2E2',
-                        color:ok?'#166534':'#991B1B',
+                        background:ok?'#DCFCE7':'#FEE2E2',color:ok?'#166534':'#991B1B',
                         border:`1.5px solid ${ok?'#86EFAC':'#FCA5A5'}`}}>
                       {i+1}
                     </div>
@@ -104,7 +121,6 @@ export default function BiletTestPage() {
                 })}
               </div>
             </div>
-
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
               <button onClick={restart} className="btn btn-primary">Qayta urinish</button>
               <Link href="/biletlar" className="btn btn-outline">Biletlarga qaytish</Link>
@@ -120,13 +136,13 @@ export default function BiletTestPage() {
   const correctIdx = q.variants.findIndex(v => v.is_correct);
   const pct = Math.round((idx / questions.length) * 100);
   const answeredCount = Object.keys(answers).length;
+  const isSaved = savedIds.has(q.id);
 
   return (
     <>
       <Navbar />
       <div style={{maxWidth:760,margin:'0 auto',padding:'1.5rem 1rem'}}>
 
-        {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem',gap:'0.5rem',flexWrap:'wrap'}}>
           <Link href="/biletlar" style={{fontSize:'0.875rem',color:'var(--text-muted)',textDecoration:'none'}}>&#8592; Biletlar</Link>
           <span style={{fontSize:'0.95rem',fontWeight:600,color:'var(--text)'}}>Bilet #{ticket?.number}</span>
@@ -135,12 +151,10 @@ export default function BiletTestPage() {
           </span>
         </div>
 
-        {/* Progress */}
         <div className="progress-bar-wrap" style={{marginBottom:'0.5rem'}}>
           <div style={{height:'100%',borderRadius:99,background:'var(--primary)',width:`${pct}%`,transition:'width 0.3s'}} />
         </div>
 
-        {/* Mini question map */}
         <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:'1.25rem'}}>
           {questions.map((_, i) => {
             const a = answers[i];
@@ -158,19 +172,24 @@ export default function BiletTestPage() {
           })}
         </div>
 
-        {/* Question card */}
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
           {q.image_url && (
             <img src={q.image_url} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',background:'var(--bg)',display:'block'}}
               onError={e=>e.target.style.display='none'} />
           )}
           <div style={{padding:'1.25rem'}}>
-            <p style={{fontSize:'0.975rem',fontWeight:500,marginBottom:'1.1rem',lineHeight:1.55,color:'var(--text)'}}>{q.text.uz}</p>
+            {/* Question text + save button */}
+            <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
+              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text.uz}</p>
+              <button onClick={() => toggleSave(q.id)} title={isSaved ? "Saqlanganlardan o'chirish" : 'Saqlash'}
+                style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',fontSize:'1.25rem',lineHeight:1,padding:'0.1rem',
+                  color:isSaved?'#F59E0B':'var(--text-muted)',transition:'color 0.15s'}}>
+                🔖
+              </button>
+            </div>
             <div style={{display:'flex',flexDirection:'column',gap:'0.6rem'}}>
               {q.variants.map((v, i) => {
-                let bg = 'var(--surface)';
-                let border = '1.5px solid var(--border)';
-                let color = 'var(--text)';
+                let bg = 'var(--surface)', border = '1.5px solid var(--border)', color = 'var(--text)';
                 if (selected !== null) {
                   if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
                   if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
