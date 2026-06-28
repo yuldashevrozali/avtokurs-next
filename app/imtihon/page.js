@@ -7,25 +7,26 @@ import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['A', 'B', 'C', 'D', 'E'];
+const TOTAL = 20;
+const EXAM_TIME = 20 * 60;
+const MAX_ERRORS = 3;
+const PASS_COUNT = 17;
 
 export default function ImtihonPage() {
   const router = useRouter();
-  const [phase, setPhase] = useState('select'); // select | loading | exam | result
-  const [mode, setMode] = useState(null);
+  const [phase, setPhase] = useState('start'); // start | loading | playing | done
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
   const [answers, setAnswers] = useState({});
   const [selected, setSelected] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(EXAM_TIME);
+  const [errorCount, setErrorCount] = useState(0);
+  const [failed, setFailed] = useState(false);
   const [savedIds, setSavedIds] = useState(new Set());
   const timerRef = useRef(null);
+  const failRef = useRef(null);
   const { lang } = useLang();
   const t = T[lang];
-
-  const MODES = [
-    { count: 50,  label: `50 ${t.q_count}`, time: 50 * 60, desc: `Tezkor mashq — 50 ${t.min_l}` },
-    { count: 100, label: `100 ${t.q_count}`, time: 100 * 60, desc: `To'liq tayyorlov — 100 ${t.min_l}` },
-  ];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
@@ -34,149 +35,169 @@ export default function ImtihonPage() {
   }, []);
 
   useEffect(() => {
-    if (phase !== 'exam') return;
+    if (phase !== 'playing') return;
     timerRef.current = setInterval(() => {
       setTimeLeft(tm => {
-        if (tm <= 1) { clearInterval(timerRef.current); finishExam(); return 0; }
+        if (tm <= 1) { clearInterval(timerRef.current); setPhase('done'); return 0; }
         return tm - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
   }, [phase]);
 
-  async function startExam(m) {
-    setMode(m);
+  async function startExam() {
     setPhase('loading');
-    const qs = await apiFetch(`/exam?count=${m.count}`);
+    const qs = await apiFetch(`/exam?count=${TOTAL}`);
     setQuestions(qs);
-    setIdx(0);
-    setAnswers({});
-    setSelected(null);
-    setTimeLeft(m.time);
-    setPhase('exam');
-  }
-
-  async function toggleSave(questionId) {
-    const isSaved = savedIds.has(questionId);
-    setSavedIds(prev => {
-      const next = new Set(prev);
-      isSaved ? next.delete(questionId) : next.add(questionId);
-      return next;
-    });
-    try {
-      await apiFetch('/saved', { method: 'POST', body: JSON.stringify({ questionId }) });
-    } catch {
-      setSavedIds(prev => {
-        const next = new Set(prev);
-        isSaved ? next.add(questionId) : next.delete(questionId);
-        return next;
-      });
-    }
+    setIdx(0); setAnswers({}); setSelected(null);
+    setTimeLeft(EXAM_TIME); setErrorCount(0); setFailed(false);
+    setPhase('playing');
   }
 
   function select(i) {
     if (selected !== null) return;
     const q = questions[idx];
     const correctIdx = q.variants.findIndex(v => v.is_correct);
+    const isCorrect = i === correctIdx;
     setSelected(i);
-    setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect: i === correctIdx } }));
+    setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect } }));
+    if (!isCorrect) {
+      apiFetch('/xatolar', { method: 'POST', body: JSON.stringify({ questionId: q.id }) }).catch(() => {});
+      setErrorCount(prev => {
+        const next = prev + 1;
+        if (next >= MAX_ERRORS) {
+          clearTimeout(failRef.current);
+          failRef.current = setTimeout(() => {
+            clearInterval(timerRef.current);
+            setFailed(true);
+            setPhase('done');
+          }, 700);
+        }
+        return next;
+      });
+    }
   }
 
   function next() {
     if (idx + 1 >= questions.length) {
-      finishExam();
+      clearInterval(timerRef.current);
+      setPhase('done');
     } else {
       setIdx(i => i + 1);
       setSelected(answers[idx + 1]?.selected ?? null);
     }
   }
 
-  function finishExam() {
-    clearInterval(timerRef.current);
-    setPhase('result');
+  function goTo(i) {
+    setIdx(i);
+    setSelected(answers[i]?.selected ?? null);
+  }
+
+  async function toggleSave(questionId) {
+    const isSaved = savedIds.has(questionId);
+    setSavedIds(prev => { const n = new Set(prev); isSaved ? n.delete(questionId) : n.add(questionId); return n; });
+    try {
+      await apiFetch('/saved', { method: 'POST', body: JSON.stringify({ questionId }) });
+    } catch {
+      setSavedIds(prev => { const n = new Set(prev); isSaved ? n.add(questionId) : n.delete(questionId); return n; });
+    }
   }
 
   function formatTime(s) {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m}:${String(sec).padStart(2, '0')}`;
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   }
 
+  const correctCount = Object.values(answers).filter(a => a.isCorrect).length;
+  const answeredCount = Object.keys(answers).length;
   const timerDanger = timeLeft < 120;
 
-  if (phase === 'select') {
+  // ── START ──
+  if (phase === 'start') {
     return (
       <>
         <Navbar />
-        <div className="container" style={{maxWidth:680}}>
-          <div style={{marginBottom:'2rem',textAlign:'center'}}>
-            <h1 style={{fontSize:'1.6rem',marginBottom:'0.4rem',color:'var(--text)'}}>{t.exam_title}</h1>
-            <p style={{color:'var(--text-muted)'}}>{t.exam_sub}</p>
+        <div className="container" style={{ maxWidth: 520 }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>📋</div>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text)', margin: '0 0 0.5rem' }}>{t.sim_title}</h1>
+            <p style={{ color: 'var(--text-muted)' }}>{t.sim_sub}</p>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))',gap:'1.25rem'}}>
-            {MODES.map(m => (
-              <button key={m.count} onClick={() => startExam(m)}
-                style={{background:'var(--surface)',border:'2px solid var(--border)',borderRadius:12,padding:'2rem 1.5rem',cursor:'pointer',textAlign:'left',transition:'all 0.15s'}}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--primary)';e.currentTarget.style.boxShadow='0 4px 16px rgba(37,99,235,0.15)';}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.boxShadow='none';}}>
-                <div style={{fontSize:'2rem',fontWeight:800,color:'var(--primary)',marginBottom:'0.5rem'}}>{m.count}</div>
-                <div style={{fontSize:'1rem',fontWeight:600,color:'var(--text)',marginBottom:'0.3rem'}}>{m.label}</div>
-                <div style={{fontSize:'0.875rem',color:'var(--text-muted)',marginBottom:'1.25rem'}}>{m.desc}</div>
-                <div style={{display:'flex',gap:'0.5rem',flexWrap:'wrap'}}>
-                  <span style={{fontSize:'0.8rem',background:'#EFF6FF',color:'#1D4ED8',borderRadius:6,padding:'3px 8px'}}>{Math.floor(m.time/60)} {t.min_l}</span>
-                  <span style={{fontSize:'0.8rem',background:'#F0FDF4',color:'#15803D',borderRadius:6,padding:'3px 8px'}}>{t.pass_l}</span>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.5rem', marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text)', marginBottom: '1rem' }}>📌 {t.sim_rules_t}</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+              {[t.sim_rule1, t.sim_rule2, t.sim_rule3, t.sim_rule4].map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: '0.75rem', fontSize: '0.9rem', color: 'var(--text)' }}>
+                  <span style={{ color: ['#2563EB','#DC2626','#D97706','#16A34A'][i], fontWeight: 700, minWidth: 20, fontSize: '1rem' }}>
+                    {['📝','❌','⏱','✅'][i]}
+                  </span>
+                  <span style={{ lineHeight: 1.45 }}>{r}</span>
                 </div>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
-          <p style={{marginTop:'1.5rem',fontSize:'0.85rem',color:'var(--text-muted)',textAlign:'center'}}>
-            {t.timer_warn}
-          </p>
+          <button onClick={startExam} className="btn btn-primary" style={{ width: '100%', padding: '0.9rem', fontSize: '1.05rem', fontWeight: 700 }}>
+            {t.sim_start}
+          </button>
         </div>
       </>
     );
   }
 
+  // ── LOADING ──
   if (phase === 'loading') {
-    return <><Navbar /><div className="container" style={{textAlign:'center',paddingTop:'4rem'}}><p style={{color:'var(--text-muted)'}}>{t.exam_prep}</p></div></>;
+    return <><Navbar /><div className="container" style={{ textAlign: 'center', paddingTop: '4rem' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
   }
 
-  if (phase === 'result') {
-    const total = questions.length;
-    const correctCount = Object.values(answers).filter(a => a.isCorrect).length;
-    const score = Math.round((correctCount / total) * 100);
-    const pass = score >= 80;
+  // ── DONE ──
+  if (phase === 'done') {
+    const timedOut = timeLeft === 0 && !failed;
+    const passed = !failed && !timedOut && correctCount >= PASS_COUNT;
+    const passedTimedOut = timedOut && correctCount >= PASS_COUNT;
+    const isPass = passed || passedTimedOut;
     return (
       <>
         <Navbar />
-        <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
-          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,padding:'2.5rem 1.5rem',textAlign:'center'}}>
-            <h2 style={{fontSize:'1.4rem',marginBottom:'0.4rem',color:'var(--text)'}}>{pass ? t.exam_great : t.exam_more}</h2>
-            <p style={{color:'var(--text-muted)',marginBottom:'1.25rem'}}>{total} {t.q_count} · {mode?.label}</p>
-            <div style={{fontSize:'3.5rem',fontWeight:800,color:pass?'#16A34A':'#DC2626',margin:'0.5rem 0 1.25rem'}}>{score}%</div>
-            <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'2rem',flexWrap:'wrap'}}>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontWeight:500}}>{t.correct_l}: {correctCount}</span>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontWeight:500}}>{t.wrong_l}: {total - correctCount}</span>
-              <span style={{padding:'0.5rem 1.25rem',borderRadius:8,background:'#F1F5F9',color:'var(--text-muted)',fontWeight:500}}>{t.unanswered}: {total - Object.keys(answers).length}</span>
+        <div style={{ maxWidth: 540, margin: '2rem auto', padding: '1rem' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '2.5rem 1.5rem', textAlign: 'center' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>
+              {failed ? '❌' : isPass ? '🎉' : '😞'}
             </div>
-            <div style={{textAlign:'left',marginBottom:'1.5rem'}}>
-              <p style={{fontSize:'0.8rem',fontWeight:600,color:'var(--text-muted)',marginBottom:'0.6rem',textTransform:'uppercase',letterSpacing:'0.05em'}}>{t.q_count}</p>
-              <div style={{display:'flex',flexWrap:'wrap',gap:'5px'}}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text)', marginBottom: '0.5rem' }}>
+              {failed ? t.sim_fail_t : timedOut ? t.sim_time_up : isPass ? t.sim_pass_t : t.sim_not_pass}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              {failed ? t.sim_fail_s : isPass ? t.sim_pass_s : ''}
+            </p>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <span style={{ padding: '0.5rem 1.25rem', borderRadius: 8, background: '#DCFCE7', color: '#166534', fontWeight: 700, fontSize: '1rem' }}>
+                ✅ {correctCount} / {TOTAL}
+              </span>
+              <span style={{ padding: '0.5rem 1.25rem', borderRadius: 8, background: errorCount > 0 ? '#FEE2E2' : '#F1F5F9', color: errorCount > 0 ? '#991B1B' : 'var(--text-muted)', fontWeight: 700, fontSize: '1rem' }}>
+                ❌ {errorCount} {t.sim_errors_made}
+              </span>
+            </div>
+
+            {/* Question review grid */}
+            <div style={{ background: 'var(--bg)', borderRadius: 8, padding: '0.875rem', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{t.results_l}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
                 {questions.map((_, i) => {
                   const a = answers[i];
                   return (
-                    <div key={i} style={{width:28,height:28,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',
-                      fontSize:'0.72rem',fontWeight:600,
-                      background: !a ? 'var(--border)' : a.isCorrect ? '#DCFCE7' : '#FEE2E2',
-                      color: !a ? 'var(--text-muted)' : a.isCorrect ? '#166534' : '#991B1B'}}>
-                      {i+1}
+                    <div key={i} onClick={() => { goTo(i); setPhase('playing'); }}
+                      style={{ width: 28, height: 28, borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer',
+                        background: !a ? 'var(--border)' : a.isCorrect ? '#DCFCE7' : '#FEE2E2',
+                        color: !a ? 'var(--text-muted)' : a.isCorrect ? '#166534' : '#991B1B' }}>
+                      {i + 1}
                     </div>
                   );
                 })}
               </div>
             </div>
-            <div style={{display:'flex',gap:'0.75rem',justifyContent:'center',flexWrap:'wrap'}}>
-              <button onClick={() => setPhase('select')} className="btn btn-primary">{t.exam_restart}</button>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button onClick={startExam} className="btn btn-primary">{t.restart}</button>
               <Link href="/" className="btn btn-outline">{t.home_l}</Link>
             </div>
           </div>
@@ -185,76 +206,66 @@ export default function ImtihonPage() {
     );
   }
 
-  // Exam phase
+  // ── PLAYING ──
   const q = questions[idx];
   if (!q) return null;
   const correctIdx = q.variants.findIndex(v => v.is_correct);
-  const answeredCount = Object.keys(answers).length;
-  const pct = Math.round((idx / questions.length) * 100);
   const isSaved = savedIds.has(q.id);
+  const pct = Math.round((answeredCount / TOTAL) * 100);
 
   return (
     <>
       <Navbar />
-      <div style={{maxWidth:760,margin:'0 auto',padding:'1rem 1rem'}}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 1rem' }}>
 
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0.875rem',gap:'1rem'}}>
-          <div style={{fontSize:'0.875rem',color:'var(--text-muted)'}}>
-            <strong style={{color:'var(--text)'}}>{idx+1}</strong> / {questions.length}
-            <span style={{marginLeft:'0.75rem',color:'var(--text-muted)'}}>{answeredCount} {t.answered}</span>
+        {/* Top bar */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <strong style={{ color: 'var(--text)' }}>{idx + 1}</strong> / {TOTAL}
+          </span>
+
+          {/* Error dots */}
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center', flex: 1 }}>
+            {Array.from({ length: MAX_ERRORS }).map((_, i) => (
+              <div key={i} style={{ width: 14, height: 14, borderRadius: '50%', background: i < errorCount ? '#DC2626' : 'var(--border)', transition: 'background 0.2s' }} />
+            ))}
+            <span style={{ fontSize: '0.8rem', color: errorCount > 0 ? '#DC2626' : 'var(--text-muted)', fontWeight: 600, marginLeft: 2 }}>
+              {errorCount}/{MAX_ERRORS} {t.sim_errors}
+            </span>
           </div>
-          <div style={{
-            display:'flex',alignItems:'center',gap:'0.4rem',
-            background: timerDanger ? '#FEF2F2' : 'var(--surface)',
-            border:`1.5px solid ${timerDanger?'#DC2626':'var(--border)'}`,
-            borderRadius:8,padding:'0.35rem 0.75rem',fontWeight:700,fontSize:'1rem',
-            color: timerDanger ? '#DC2626' : 'var(--text)'
-          }}>
-            <span style={{fontSize:'0.9rem'}}>{timerDanger ? '⚠' : '⏱'}</span>
+
+          {/* Timer */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: timerDanger ? '#FEF2F2' : 'var(--surface)', border: `1.5px solid ${timerDanger ? '#DC2626' : 'var(--border)'}`, borderRadius: 8, padding: '0.3rem 0.75rem', fontWeight: 700, fontSize: '1rem', color: timerDanger ? '#DC2626' : 'var(--text)' }}>
+            <span>{timerDanger ? '⚠' : '⏱'}</span>
             {formatTime(timeLeft)}
           </div>
-          <button onClick={finishExam} className="btn btn-outline" style={{padding:'0.35rem 0.75rem',fontSize:'0.8rem'}}>
+
+          <button onClick={() => { clearInterval(timerRef.current); setPhase('done'); }} className="btn btn-outline" style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}>
             {t.finish}
           </button>
         </div>
 
-        <div className="progress-bar-wrap" style={{marginBottom:'0.5rem'}}>
-          <div style={{height:'100%',borderRadius:99,background:'var(--primary)',width:`${pct}%`,transition:'width 0.3s'}} />
+        {/* Progress */}
+        <div className="progress-bar-wrap" style={{ marginBottom: '1.25rem' }}>
+          <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${pct}%`, transition: 'width 0.3s' }} />
         </div>
 
-        <div style={{display:'flex',gap:3,flexWrap:'wrap',marginBottom:'1rem'}}>
-          {questions.map((_, i) => {
-            const a = answers[i];
-            const isCurr = i === idx;
-            return (
-              <div key={i} onClick={() => { setIdx(i); setSelected(answers[i]?.selected ?? null); }}
-                style={{width:22,height:22,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center',
-                  fontSize:'0.65rem',fontWeight:700,cursor:'pointer',
-                  background: a ? (a.isCorrect ? '#DCFCE7' : '#FEE2E2') : isCurr ? 'var(--primary)' : 'var(--border)',
-                  color: a ? (a.isCorrect ? '#166534' : '#991B1B') : isCurr ? 'white' : 'var(--text-muted)',
-                  border: isCurr ? '2px solid var(--primary)' : 'none'}}>
-                {i+1}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
+        {/* Question card */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           {q.image_url && (
-            <img src={q.image_url} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',background:'var(--bg)',display:'block'}}
-              onError={e=>e.target.style.display='none'} />
+            <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
           )}
-          <div style={{padding:'1.25rem'}}>
-            {/* Question text + save button */}
-            <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
-              <p style={{flex:1,fontSize:'0.975rem',fontWeight:500,lineHeight:1.55,color:'var(--text)',margin:0}}>{q.text[lang] || q.text.uz}</p>
-              <button onClick={() => toggleSave(q.id)} title={isSaved ? "Saqlanganlardan o'chirish" : 'Saqlash'}
-                style={{flexShrink:0,background:'none',border:'none',cursor:'pointer',fontSize:'1.25rem',lineHeight:1,padding:'0.1rem',
-                  color:isSaved?'#F59E0B':'var(--text-muted)',transition:'color 0.15s'}}>
+          <div style={{ padding: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.1rem' }}>
+              <p style={{ flex: 1, fontSize: '0.975rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: 0 }}>
+                {q.text[lang] || q.text.uz}
+              </p>
+              <button onClick={() => toggleSave(q.id)}
+                style={{ flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, padding: '0.1rem', color: isSaved ? '#F59E0B' : 'var(--text-muted)', transition: 'color 0.15s' }}>
                 🔖
               </button>
             </div>
-            <div style={{display:'flex',flexDirection:'column',gap:'0.6rem'}}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
               {q.variants.map((v, i) => {
                 let bg = 'var(--surface)', border = '1.5px solid var(--border)', color = 'var(--text)';
                 if (selected !== null) {
@@ -263,10 +274,8 @@ export default function ImtihonPage() {
                 }
                 return (
                   <button key={i} onClick={() => select(i)} disabled={selected !== null}
-                    style={{padding:'0.8rem 1rem',border,borderRadius:8,background:bg,color,textAlign:'left',fontSize:'0.9rem',
-                      cursor:selected===null?'pointer':'default',display:'flex',gap:'0.75rem',alignItems:'flex-start',lineHeight:1.4}}>
-                    <span style={{minWidth:22,height:22,borderRadius:'50%',border:'1.5px solid var(--border)',background:'var(--bg)',
-                      display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.75rem',fontWeight:700,flexShrink:0,color:'var(--text-muted)'}}>
+                    style={{ padding: '0.8rem 1rem', border, borderRadius: 8, background: bg, color, textAlign: 'left', fontSize: '0.9rem', cursor: selected === null ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', lineHeight: 1.4 }}>
+                    <span style={{ minWidth: 22, height: 22, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, color: 'var(--text-muted)' }}>
                       {LABELS[i]}
                     </span>
                     <span>{v.text[lang] || v.text.uz}</span>
@@ -276,15 +285,33 @@ export default function ImtihonPage() {
             </div>
           </div>
           {selected !== null && (
-            <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',gap:'1rem'}}>
-              <span style={{fontSize:'0.875rem',fontWeight:600,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
+            <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', gap: '1rem' }}>
+              <span style={{ fontSize: '0.875rem', fontWeight: 600, color: selected === correctIdx ? '#16A34A' : '#DC2626' }}>
                 {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < questions.length ? t.next_q : t.finish}
+                {idx + 1 < TOTAL ? t.next_q : t.finish}
               </button>
             </div>
           )}
+        </div>
+
+        {/* Navigation grid — bottom */}
+        <div className="q-nav-grid">
+          {questions.map((_, i) => {
+            const a = answers[i];
+            const isCurr = i === idx;
+            return (
+              <div key={i} onClick={() => goTo(i)} className="q-nav-cell"
+                style={{
+                  background: a ? (a.isCorrect ? '#DCFCE7' : '#FEE2E2') : isCurr ? 'var(--primary)' : 'var(--border)',
+                  color: a ? (a.isCorrect ? '#166534' : '#991B1B') : isCurr ? 'white' : 'var(--text-muted)',
+                  border: isCurr && !a ? '2px solid var(--primary)' : '2px solid transparent',
+                }}>
+                {i + 1}
+              </div>
+            );
+          })}
         </div>
       </div>
     </>

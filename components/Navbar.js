@@ -14,13 +14,11 @@ export default function Navbar() {
   const t = T[lang];
 
   const NAV_LINKS = [
-    { href: '/mavzular', label: t.topics },
+    { href: '/',         label: t.home_l  },
+    { href: '/mavzular', label: t.topics  },
     { href: '/biletlar', label: t.tickets },
-    { href: '/imtihon', label: t.exam },
-    { href: '/modules', label: t.videos },
-    { href: '/oyin', label: t.game },
-    { href: '/battle', label: t.battle },
-    { href: '/saqlangan', label: t.saved },
+    { href: '/imtihon',  label: t.exam    },
+    { href: '/modules',  label: t.videos  },
   ];
 
   useEffect(() => {
@@ -71,6 +69,7 @@ export default function Navbar() {
   }
 
   function isActive(href) {
+    if (href === '/') return pathname === '/';
     if (href === '/modules') return pathname.startsWith('/modules') || pathname.startsWith('/lesson');
     return pathname.startsWith(href);
   }

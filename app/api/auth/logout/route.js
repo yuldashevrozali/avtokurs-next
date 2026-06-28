@@ -9,5 +9,7 @@ export async function POST(req) {
     await connectDB();
     await User.findByIdAndUpdate(decoded.id, { $unset: { sessionId: 1, activeDevice: 1 } });
   }
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  response.cookies.set('avtokurs_token', '', { maxAge: 0, path: '/' });
+  return response;
 }

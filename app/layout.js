@@ -5,6 +5,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="uz">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{__html: `(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})()`}} />
       </head>
       <body><LangProvider>{children}</LangProvider></body>

@@ -14,7 +14,7 @@ export default function TopicTestPage() {
   const [questions, setQuestions] = useState([]);
   const [topic, setTopic] = useState(null);
   const [idx, setIdx] = useState(0);
-  const [correct, setCorrect] = useState(0);
+  const [answers, setAnswers] = useState({});
   const [selected, setSelected] = useState(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -31,6 +31,7 @@ export default function TopicTestPage() {
   const [editText, setEditText] = useState('');
   const [noteSaving, setNoteSaving] = useState(false);
   const textareaRef = useRef(null);
+  const autoRef = useRef(null);
 
   const { lang } = useLang();
   const t = T[lang];
@@ -64,26 +65,50 @@ export default function TopicTestPage() {
 
   function select(i) {
     if (selected !== null) return;
-    setSelected(i);
     const q = questions[idx];
     const correctIdx = q.variants.findIndex(v => v.is_correct);
-    if (i === correctIdx) setCorrect(c => c + 1);
+    const isCorrect = i === correctIdx;
+    setSelected(i);
+    setAnswers(prev => ({ ...prev, [idx]: { selected: i, correctIdx, isCorrect } }));
+    if (!isCorrect) {
+      apiFetch('/xatolar', { method: 'POST', body: JSON.stringify({ questionId: q.id }) }).catch(() => {});
+    }
+    if (isCorrect) {
+      const currentIdx = idx;
+      clearTimeout(autoRef.current);
+      autoRef.current = setTimeout(() => {
+        setNotePanel(null);
+        if (currentIdx + 1 >= questions.length) { saveResult(); setDone(true); return; }
+        const nextIdx = currentIdx + 1;
+        setIdx(nextIdx);
+        setSelected(null);
+      }, 600);
+    }
   }
 
   function next() {
     setNotePanel(null);
-    if (idx + 1 >= questions.length) { setDone(true); saveResult(); return; }
-    setIdx(i => i + 1); setSelected(null);
+    if (idx + 1 >= questions.length) { saveResult(); setDone(true); return; }
+    const nextIdx = idx + 1;
+    setIdx(nextIdx);
+    setSelected(answers[nextIdx]?.selected ?? null);
+  }
+
+  function goTo(i) {
+    clearTimeout(autoRef.current);
+    setNotePanel(null);
+    setIdx(i);
+    setSelected(answers[i]?.selected ?? null);
   }
 
   function saveResult() {
     const total = questions.length;
-    const lastCorrect = correct + (selected === questions[idx]?.variants.findIndex(v => v.is_correct) ? 1 : 0);
-    const pct = Math.round((lastCorrect / total) * 100);
-    localStorage.setItem(`topic_result_${userId}_${id}`, JSON.stringify({ correct: lastCorrect, total, percent: pct, date: Date.now() }));
+    const correctCount = Object.values(answers).filter(a => a.isCorrect).length;
+    const pct = Math.round((correctCount / total) * 100);
+    localStorage.setItem(`topic_result_${userId}_${id}`, JSON.stringify({ correct: correctCount, total, percent: pct, date: Date.now() }));
   }
 
-  function restart() { setIdx(0); setCorrect(0); setSelected(null); setDone(false); setNotePanel(null); }
+  function restart() { setIdx(0); setAnswers({}); setSelected(null); setDone(false); setNotePanel(null); }
 
   function openNotePanel(questionId) {
     if (notePanel === questionId) { setNotePanel(null); return; }
@@ -133,9 +158,10 @@ export default function TopicTestPage() {
 
   const total = questions.length;
   const pct = Math.round((idx / total) * 100);
+  const correctCount = Object.values(answers).filter(a => a.isCorrect).length;
 
   if (done) {
-    const score = Math.round((correct / total) * 100);
+    const score = Math.round((correctCount / total) * 100);
     const pass = score >= 80;
     return (
       <>
@@ -146,8 +172,8 @@ export default function TopicTestPage() {
             <p style={{color:'var(--text-muted)',marginBottom:'1rem'}}>{topic?.name[lang] || topic?.name.uz}</p>
             <div style={{fontSize:'2.5rem',fontWeight:700,color:pass?'#16A34A':'#DC2626',margin:'1rem 0'}}>{score}%</div>
             <div style={{display:'flex',gap:'1rem',justifyContent:'center',marginBottom:'2rem',flexWrap:'wrap'}}>
-              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.875rem'}}>{t.correct_l}: {correct}</span>
-              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.875rem'}}>{t.wrong_l}: {total - correct}</span>
+              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DCFCE7',color:'#166534',fontSize:'0.875rem'}}>{t.correct_l}: {correctCount}</span>
+              <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#FEE2E2',color:'#991B1B',fontSize:'0.875rem'}}>{t.wrong_l}: {total - correctCount}</span>
               <span style={{padding:'0.5rem 1rem',borderRadius:8,background:'#DBEAFE',color:'#1E40AF',fontSize:'0.875rem'}}>{t.total_l}: {total}</span>
             </div>
             <div style={{display:'flex',gap:'0.75rem',justifyContent:'center'}}>
@@ -180,7 +206,7 @@ export default function TopicTestPage() {
         </div>
 
         {/* Progress bar */}
-        <div className="progress-bar-wrap" style={{marginBottom:'1.5rem'}}>
+        <div className="progress-bar-wrap" style={{marginBottom:'1.25rem'}}>
           <div style={{height:'100%',borderRadius:99,background:'var(--primary)',width:`${pct}%`,transition:'width 0.3s'}} />
         </div>
 
@@ -345,6 +371,24 @@ export default function TopicTestPage() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Question navigation grid */}
+        <div className="q-nav-grid">
+          {questions.map((_, i) => {
+            const a = answers[i];
+            const isCurr = i === idx;
+            return (
+              <div key={i} onClick={() => goTo(i)} className="q-nav-cell"
+                style={{
+                  background: a ? (a.isCorrect ? '#DCFCE7' : '#FEE2E2') : isCurr ? 'var(--primary)' : 'var(--border)',
+                  color: a ? (a.isCorrect ? '#166534' : '#991B1B') : isCurr ? 'white' : 'var(--text-muted)',
+                  border: isCurr && !a ? '2px solid var(--primary)' : '2px solid transparent',
+                }}>
+                {i + 1}
+              </div>
+            );
+          })}
         </div>
       </div>
     </>

@@ -30,7 +30,15 @@ export async function POST(req) {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    return NextResponse.json({ token, user: { id: user._id, name: user.name, role: user.role } });
+    const response = NextResponse.json({ token, user: { id: user._id, name: user.name, role: user.role } });
+    response.cookies.set('avtokurs_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,
+      path: '/',
+    });
+    return response;
   } catch {
     return NextResponse.json({ message: 'Server xatosi' }, { status: 500 });
   }
