@@ -1,5 +1,6 @@
 import './globals.css';
 import LangProvider from '@/components/LangProvider';
+import MobileNav from '@/components/MobileNav';
 export const metadata = { title: "Avtotest ta'lim platformasi" };
 export default function RootLayout({ children }) {
   return (
@@ -8,7 +9,12 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{__html: `(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})()`}} />
       </head>
-      <body><LangProvider>{children}</LangProvider></body>
+      <body>
+        <LangProvider>
+          {children}
+          <MobileNav />
+        </LangProvider>
+      </body>
     </html>
   );
 }
