@@ -173,7 +173,7 @@ export default function MashqPage() {
                 {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < questions.length ? t.next_q : t.see_result}
+                {idx + 1 < questions.length ? t.next_q : t.finish}
               </button>
             </div>
           )}

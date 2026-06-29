@@ -79,7 +79,7 @@ export default function TopicTestPage() {
       clearTimeout(autoRef.current);
       autoRef.current = setTimeout(() => {
         setNotePanel(null);
-        if (currentIdx + 1 >= questions.length) { saveResult(); setDone(true); return; }
+        if (currentIdx + 1 >= questions.length) return; // oxirgi savol — foydalanuvchi Yakunlash tugmasini bossin
         const nextIdx = currentIdx + 1;
         setIdx(nextIdx);
         setSelected(null);
@@ -383,7 +383,7 @@ export default function TopicTestPage() {
                 {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < total ? t.next_q : t.see_result}
+                {idx + 1 < total ? t.next_q : t.finish}
               </button>
             </div>
           )}

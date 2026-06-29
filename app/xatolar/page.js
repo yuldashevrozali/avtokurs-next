@@ -45,7 +45,7 @@ export default function XatolarPage() {
       const cur = idx;
       clearTimeout(autoRef.current);
       autoRef.current = setTimeout(() => {
-        if (cur + 1 >= questions.length) { setPhase('done'); return; }
+        if (cur + 1 >= questions.length) return; // oxirgi savol — foydalanuvchi Yakunlash tugmasini bossin
         setIdx(cur + 1);
         setSelected(null);
       }, 600);
@@ -211,7 +211,7 @@ export default function XatolarPage() {
                 {selected === correctIdx ? t.correct : t.wrong}
               </span>
               <button onClick={next} className="btn btn-primary">
-                {idx + 1 < total ? t.next_q : t.see_result}
+                {idx + 1 < total ? t.next_q : t.finish}
               </button>
             </div>
           )}
