@@ -28,7 +28,7 @@ export default function RootLayout({ children }) {
     <html lang="uz">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <script dangerouslySetInnerHTML={{__html: `(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');})()`}} />
+        <script dangerouslySetInnerHTML={{__html: `(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');var f=parseInt(localStorage.getItem('font-size'));if(f>=14&&f<=20)document.documentElement.style.fontSize=f+'px';})()`}} />
       </head>
       <body>
         <LangProvider>

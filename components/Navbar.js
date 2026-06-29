@@ -8,6 +8,7 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
   const [dark, setDark] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(16);
   const pathname = usePathname();
   const router = useRouter();
   const { lang, setLang } = useLang();
@@ -25,6 +26,9 @@ export default function Navbar() {
     const u = localStorage.getItem('user');
     if (u) setUser(JSON.parse(u));
     setDark(document.documentElement.getAttribute('data-theme') === 'dark');
+    const saved = parseInt(localStorage.getItem('font-size')) || 16;
+    setFontSize(saved);
+    document.documentElement.style.fontSize = saved + 'px';
   }, []);
 
   // Close mobile menu on route change
@@ -49,6 +53,13 @@ export default function Navbar() {
     const id = setInterval(check, 30_000);
     return () => clearInterval(id);
   }, [user]);
+
+  function changeFont(delta) {
+    const next = Math.min(20, Math.max(14, fontSize + delta));
+    setFontSize(next);
+    document.documentElement.style.fontSize = next + 'px';
+    localStorage.setItem('font-size', next);
+  }
 
   function toggleTheme() {
     const next = !dark;
@@ -100,10 +111,20 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Theme toggle + lang toggle + hamburger — always on the right */}
+      {/* Theme toggle + font size + lang toggle + hamburger — always on the right */}
       <div className="nav-right">
         <button onClick={toggleTheme} className="theme-toggle" title={dark ? 'Kunduzgi rejim' : 'Tungi rejim'}>
           {dark ? '☀' : '☾'}
+        </button>
+        <button onClick={() => changeFont(-1)} className="theme-toggle" title="Shriftni kichiklashtirish"
+          disabled={fontSize <= 14}
+          style={{fontWeight:700, fontSize:'0.85rem', opacity: fontSize <= 14 ? 0.4 : 1}}>
+          A−
+        </button>
+        <button onClick={() => changeFont(+1)} className="theme-toggle" title="Shriftni kattallashtirish"
+          disabled={fontSize >= 20}
+          style={{fontWeight:700, fontSize:'0.95rem', opacity: fontSize >= 20 ? 0.4 : 1}}>
+          A+
         </button>
         <button onClick={() => setLang(lang === 'uz' ? 'uz_cryl' : 'uz')}
           className="theme-toggle"
