@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
-const LABELS = ['A', 'B', 'C', 'D', 'E'];
+const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const TOTAL = 20;
 const EXAM_TIME = 20 * 60;
 const MAX_ERRORS = 3;

@@ -5,7 +5,7 @@ import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
-const LABELS = ['A', 'B', 'C', 'D', 'E'];
+const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const START_COUNT = 3;
 
 export default function MarafonPage() {

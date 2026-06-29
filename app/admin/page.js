@@ -233,12 +233,12 @@ export default function AdminPage() {
                       <div className="form-group"><label>Tartib</label><input type="number" value={lesForm.order} onChange={e=>setLesForm({...lesForm,order:+e.target.value})} /></div>
                       <p style={{fontSize:'0.875rem',fontWeight:500,marginBottom:'0.75rem',marginTop:'0.5rem'}}>Quiz (ixtiyoriy)</p>
                       <div className="form-group"><label>Savol</label><input value={lesForm.quizQ} onChange={e=>setLesForm({...lesForm,quizQ:e.target.value})} /></div>
-                      {['A','B','C','D'].map((l,i)=>(
+                      {['F1','F2','F3','F4'].map((l,i)=>(
                         <div key={i} className="form-group"><label>Variant {l}</label><input value={lesForm.opts[i]} onChange={e=>{const o=[...lesForm.opts];o[i]=e.target.value;setLesForm({...lesForm,opts:o})}} /></div>
                       ))}
                       <div className="form-group"><label>To'g'ri javob</label>
                         <select value={lesForm.correctIdx} onChange={e=>setLesForm({...lesForm,correctIdx:+e.target.value})}>
-                          {['A','B','C','D'].map((l,i)=><option key={i} value={i}>Variant {l}</option>)}
+                          {['F1','F2','F3','F4'].map((l,i)=><option key={i} value={i}>Variant {l}</option>)}
                         </select>
                       </div>
                       <div style={{display:'flex',gap:'0.5rem'}}>
