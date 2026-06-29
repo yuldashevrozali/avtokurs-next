@@ -20,6 +20,7 @@ export default function TopicTestPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [lightbox, setLightbox] = useState(null);
 
   // Saved question IDs
   const [savedIds, setSavedIds] = useState(new Set());
@@ -195,6 +196,20 @@ export default function TopicTestPage() {
   return (
     <>
       <Navbar />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(0,0,0,0.85)',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem',cursor:'zoom-out'}}>
+          <button onClick={() => setLightbox(null)}
+            style={{position:'absolute',top:16,right:16,width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,0.15)',border:'none',color:'white',fontSize:'1.4rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>
+            ✕
+          </button>
+          <img src={lightbox} alt="" onClick={e => e.stopPropagation()}
+            style={{maxWidth:'100%',maxHeight:'90vh',objectFit:'contain',borderRadius:8,cursor:'default',boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}} />
+        </div>
+      )}
+
       <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
 
         {/* Header */}
@@ -213,7 +228,8 @@ export default function TopicTestPage() {
         {/* Question card */}
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
           {q.image_url && (
-            <img src={q.image_url} alt="" style={{width:'100%',maxHeight:260,objectFit:'contain',background:'var(--bg)',display:'block'}}
+            <img src={q.image_url} alt="" onClick={() => setLightbox(q.image_url)}
+              style={{width:'100%',maxHeight:260,objectFit:'contain',background:'var(--bg)',display:'block',cursor:'zoom-in'}}
               onError={e=>e.target.style.display='none'} />
           )}
 
