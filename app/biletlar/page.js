@@ -1,24 +1,20 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
 export default function BiletlarPage() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const router = useRouter();
   const { lang } = useLang();
   const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/login'); return; }
-    setUserId(JSON.parse(raw).id);
-    apiFetch('/tickets').then(data => { setTickets(data); setLoading(false); });
+    if (raw) setUserId(JSON.parse(raw).id);
+    fetch('/api/tickets').then(r => r.json()).then(data => { setTickets(data); setLoading(false); });
   }, []);
 
   function getProgress(ticketId) {

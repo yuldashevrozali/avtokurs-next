@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
+// /mavzular va /biletlar ro'yxat sahifalari ochiq (Google bot uchun)
+// faqat /mavzular/[id] va /biletlar/[id] login talab qiladi
 const PROTECTED = [
   '/mavzular/',
-  '/biletlar',
+  '/biletlar/',
   '/imtihon',
   '/modules',
   '/battle',
@@ -16,7 +18,7 @@ const PROTECTED = [
 ];
 
 function isProtected(pathname) {
-  return PROTECTED.some(p => pathname === p.replace(/\/$/, '') || pathname.startsWith(p));
+  return PROTECTED.some(p => pathname.startsWith(p) || pathname === p);
 }
 
 export async function middleware(request) {
@@ -45,8 +47,8 @@ function redirectLogin(request) {
 
 export const config = {
   matcher: [
-    '/mavzular/:path*',
-    '/biletlar/:path*',
+    '/mavzular/:path+',
+    '/biletlar/:path+',
     '/imtihon/:path*',
     '/modules/:path*',
     '/battle/:path*',

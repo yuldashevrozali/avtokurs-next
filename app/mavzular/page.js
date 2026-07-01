@@ -1,9 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
 export default function MavzularPage() {
@@ -11,19 +9,17 @@ export default function MavzularPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
-  const router = useRouter();
   const { lang } = useLang();
   const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (!raw) { router.push('/login'); return; }
-    const u = JSON.parse(raw);
-    setUserId(u.id);
-    apiFetch('/topics').then(data => { setTopics(data); setLoading(false); });
+    if (raw) setUserId(JSON.parse(raw).id);
+    fetch('/api/topics').then(r => r.json()).then(data => { setTopics(data); setLoading(false); });
   }, []);
 
   function getProgress(id) {
+    if (!userId) return null;
     const raw = localStorage.getItem(`topic_result_${userId}_${id}`);
     return raw ? JSON.parse(raw) : null;
   }
