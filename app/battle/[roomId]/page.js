@@ -7,8 +7,8 @@ import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
-const MEDALS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣'];
-const BATTLE_TIME = 30 * 60; // 30 minutes in seconds
+const MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣'];
+const BATTLE_TIME = 30 * 60;
 
 export default function BattleRoomPage() {
   const { roomId } = useParams();
@@ -23,6 +23,7 @@ export default function BattleRoomPage() {
   const [errMsg, setErrMsg] = useState('');
 
   const [questions, setQuestions] = useState([]);
+  const [totalQ, setTotalQ] = useState(20);
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
   const [myAnswered, setMyAnswered] = useState(0);
@@ -92,7 +93,9 @@ export default function BattleRoomPage() {
       }
       if (data.status === 'playing') {
         if (phaseRef.current !== 'playing' && phaseRef.current !== 'waiting-others') {
-          setQuestions(data.questions || []);
+          const qs = data.questions || [];
+          setQuestions(qs);
+          setTotalQ(qs.length || 20);
           setPhase('playing');
           if (data.startedAt) startTimer(data.startedAt);
         }
@@ -171,16 +174,17 @@ export default function BattleRoomPage() {
       });
       const newAnswered = res.answeredCount;
       const newCorrect = res.correctCount;
+      const tq = res.totalQuestions || totalQ;
       setMyAnswered(newAnswered);
       setMyCorrect(newCorrect);
       setPlayers(prev => prev.map(p => p.userId === myId
-        ? { ...p, answeredCount: newAnswered, correctCount: newCorrect, done: newAnswered >= 20 }
+        ? { ...p, answeredCount: newAnswered, correctCount: newCorrect, done: newAnswered >= tq }
         : p
       ));
 
       clearTimeout(autoRef.current);
 
-      if (newAnswered >= 20) {
+      if (newAnswered >= tq) {
         // I'm done — switch to waiting-others, keep polling
         autoRef.current = setTimeout(async () => {
           const data = await apiFetch(`/battle/${roomId}`).catch(() => null);
@@ -272,8 +276,14 @@ export default function BattleRoomPage() {
 
   // ── WAITING ROOM ──
   if (phase === 'waiting') {
+    const isRandom = room?.mode === 'random';
     const isCreator = room?.createdBy === myId;
     const canStart = players.length >= 2;
+    // For random 2-player: auto-starts when 2nd joins, don't show start button
+    // For random 3-16: creator can start when ≥2 joined
+    const showStartBtn = isCreator && canStart && (!isRandom || room?.maxPlayers > 2);
+    const showAutoMsg = isRandom && room?.maxPlayers === 2 && players.length < 2;
+
     return (
       <>
         <Navbar />
@@ -282,15 +292,16 @@ export default function BattleRoomPage() {
 
             <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{t.waiting_room}</h2>
-                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{players.length} / {room?.maxPlayers || 2} {t.players_l}</p>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>
+                  {isRandom ? (lang === 'uz' ? '🎲 Random xona' : '🎲 Рандом хона') : t.waiting_room}
+                </h2>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {players.length} / {room?.maxPlayers || 2} {t.players_l}
+                </p>
                 {room?.questionSource && room.questionSource !== 'random' && (
                   <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
                     {room.questionSource === 'topic' ? '📖' : '🎫'} {room.questionSourceName?.[lang] || room.questionSourceName?.uz}
                   </p>
-                )}
-                {(!room?.questionSource || room.questionSource === 'random') && (
-                  <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>🎲 {t.src_random}</p>
                 )}
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -299,8 +310,9 @@ export default function BattleRoomPage() {
               </div>
             </div>
 
+            {/* Player slots */}
             <div style={{ padding: '1rem 1.5rem' }}>
-              {Array.from({ length: room?.maxPlayers || 2 }).map((_, i) => {
+              {Array.from({ length: Math.min(room?.maxPlayers || 2, 8) }).map((_, i) => {
                 const player = players[i];
                 const isMe = player?.userId === myId;
                 return (
@@ -314,46 +326,69 @@ export default function BattleRoomPage() {
                           <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)', fontSize: '0.9rem' }}>
                             {player.name} {isMe ? (lang === 'uz' ? '(Siz)' : '(Сиз)') : ''}
                           </p>
-                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#16A34A' }}>
-                            {lang === 'uz' ? '✓ Tayyor' : '✓ Тайёр'}
-                          </p>
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#16A34A' }}>✓ {lang === 'uz' ? 'Tayyor' : 'Тайёр'}</p>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '1rem', flexShrink: 0 }}>⏳</div>
-                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t.slot_empty}</p>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '1rem', flexShrink: 0 }}>
+                          {isRandom ? '🔍' : '⏳'}
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                          {isRandom ? (lang === 'uz' ? 'Qidirilmoqda...' : 'Қидирилмоқда...') : t.slot_empty}
+                        </p>
                       </>
                     )}
                   </div>
                 );
               })}
+              {(room?.maxPlayers || 2) > 8 && players.length < (room?.maxPlayers || 2) && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '0.5rem 0' }}>
+                  + {(room?.maxPlayers || 2) - Math.min(players.length, 8)} {lang === 'uz' ? "ta bo'sh o'rin" : "та бўш ўрин"}
+                </p>
+              )}
             </div>
 
-            <div style={{ padding: '0 1.5rem 0.875rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/battle/${roomId}`}
-                  style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.8rem', outline: 'none' }} />
-                <button onClick={copyLink}
-                  style={{ padding: '0.55rem 0.875rem', background: copied ? '#16A34A' : 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                  {copied ? t.copied_l : t.copy_l}
-                </button>
+            {/* Share link — only for friend mode */}
+            {!isRandom && (
+              <div style={{ padding: '0 1.5rem 0.875rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/battle/${roomId}`}
+                    style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.8rem', outline: 'none' }} />
+                  <button onClick={copyLink}
+                    style={{ padding: '0.55rem 0.875rem', background: copied ? '#16A34A' : 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                    {copied ? t.copied_l : t.copy_l}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div style={{ padding: '0 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {isCreator ? (
-                <button onClick={startGame} disabled={!canStart}
-                  style={{ padding: '0.85rem', background: canStart ? '#16A34A' : 'var(--border)', color: canStart ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: 8, fontWeight: 700, cursor: canStart ? 'pointer' : 'not-allowed', fontSize: '1rem' }}>
-                  {canStart ? t.start_game : t.need_more}
-                </button>
-              ) : (
+              {showAutoMsg && (
                 <div style={{ padding: '0.85rem', background: 'var(--bg)', borderRadius: 8, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                  {lang === 'uz' ? "⏳ Xona egasi o'yinni boshlashini kuting" : '⏳ Хона эгаси ўйинни бошлашини кутинг'}
+                  ⏳ {lang === 'uz' ? "Raqib qo'shilishi kutilmoqda..." : 'Рақиб қўшилиши кутилмоқда...'}
+                </div>
+              )}
+              {showStartBtn && (
+                <button onClick={startGame}
+                  style={{ padding: '0.85rem', background: '#16A34A', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}>
+                  {t.start_game} ({players.length} {lang === 'uz' ? 'kishi' : 'киши'})
+                </button>
+              )}
+              {!showStartBtn && !showAutoMsg && !isCreator && (
+                <div style={{ padding: '0.85rem', background: 'var(--bg)', borderRadius: 8, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {isRandom
+                    ? (lang === 'uz' ? "⏳ O'yinchilar to'lishi kutilmoqda..." : '⏳ Ўйинчилар тўлиши кутилмоқда...')
+                    : (lang === 'uz' ? "⏳ Xona egasi o'yinni boshlashini kuting" : '⏳ Хона эгаси ўйинни бошлашини кутинг')}
+                </div>
+              )}
+              {!showStartBtn && !showAutoMsg && isCreator && !canStart && (
+                <div style={{ padding: '0.85rem', background: 'var(--bg)', borderRadius: 8, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  ⏳ {t.need_more}
                 </div>
               )}
               <Link href="/battle" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem', textDecoration: 'none' }}>
-                {t.back_battle}
+                ← {t.back_battle}
               </Link>
             </div>
           </div>
@@ -406,14 +441,14 @@ export default function BattleRoomPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              <strong style={{ color: 'var(--text)' }}>{idx + 1}</strong> / {questions.length}
+              <strong style={{ color: 'var(--text)' }}>{idx + 1}</strong> / {totalQ}
             </span>
             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#16A34A' }}>
               {myCorrect} {lang === 'uz' ? "to'g'ri" : 'тўғри'}
             </span>
           </div>
           <div className="progress-bar-wrap" style={{ marginBottom: '0.875rem' }}>
-            <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${Math.round((idx / questions.length) * 100)}%`, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${Math.round((idx / totalQ) * 100)}%`, transition: 'width 0.3s' }} />
           </div>
 
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>

@@ -35,7 +35,8 @@ export async function POST(req, { params }) {
 
   const newAnswered = player.answeredCount + 1;
   const newCorrect = player.correctCount + (isCorrect ? 1 : 0);
-  const isDone = newAnswered >= 20;
+  const totalQuestions = room.questionIds.length;
+  const isDone = newAnswered >= totalQuestions;
 
   const updates = {
     [`players.${playerIdx}.answeredCount`]: newAnswered,
@@ -75,5 +76,5 @@ export async function POST(req, { params }) {
     }
   }
 
-  return NextResponse.json({ isCorrect, answeredCount: newAnswered, correctCount: newCorrect });
+  return NextResponse.json({ isCorrect, answeredCount: newAnswered, correctCount: newCorrect, totalQuestions });
 }

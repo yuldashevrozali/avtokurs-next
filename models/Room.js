@@ -13,7 +13,7 @@ const playerSchema = new mongoose.Schema({
 const schema = new mongoose.Schema({
   roomId:          { type: String, required: true, unique: true },
   mode:            { type: String, enum: ['friend', 'random'], required: true },
-  maxPlayers:      { type: Number, default: 2, min: 2, max: 8 },
+  maxPlayers:      { type: Number, default: 2, min: 2, max: 16 },
   questionIds:     [Number],
   questionSource:  { type: String, enum: ['random', 'topic', 'ticket'], default: 'random' },
   questionSourceId:{ type: Number, default: null },

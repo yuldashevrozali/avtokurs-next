@@ -8,43 +8,52 @@ import data from '@/base.json';
 
 function pick20() {
   const ids = data.questions.map(q => q.id);
-  const shuffled = [...ids].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 20);
+  return [...ids].sort(() => Math.random() - 0.5).slice(0, 20);
 }
 
 export async function POST(req) {
   const { user, error } = authRequired(req);
   if (error) return error;
   await connectDB();
+  const { maxPlayers = 2 } = await req.json().catch(() => ({}));
+  const clampedMax = Math.min(Math.max(parseInt(maxPlayers) || 2, 2), 16);
   const dbUser = await User.findById(user.id).select('name');
 
-  // Try to join an existing waiting random room
+  // Try to join an existing waiting random room with same maxPlayers
   const joined = await Room.findOneAndUpdate(
     {
       mode: 'random',
       status: 'waiting',
+      maxPlayers: clampedMax,
       'players.userId': { $ne: user.id },
       $expr: { $lt: [{ $size: '$players' }, '$maxPlayers'] },
-      createdAt: { $gte: new Date(Date.now() - 30000) },
+      createdAt: { $gte: new Date(Date.now() - 120000) },
     },
-    {
-      $push: { players: { userId: user.id, name: dbUser.name } },
-      $set: { status: 'playing', startedAt: new Date() },
-    },
+    { $push: { players: { userId: user.id, name: dbUser.name } } },
     { new: true },
   );
 
-  if (joined) return NextResponse.json({ roomId: joined.roomId, matched: true });
+  if (joined) {
+    // Auto-start if now full
+    if (joined.players.length >= joined.maxPlayers) {
+      await Room.updateOne(
+        { roomId: joined.roomId },
+        { $set: { status: 'playing', startedAt: new Date() } },
+      );
+    }
+    return NextResponse.json({ roomId: joined.roomId });
+  }
 
-  // No room — create one and wait
+  // No matching room — create one and wait
   const roomId = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
   const room = await Room.create({
     roomId,
     mode: 'random',
-    maxPlayers: 2,
+    maxPlayers: clampedMax,
     questionIds: pick20(),
+    questionSource: 'random',
     players: [{ userId: user.id, name: dbUser.name }],
     createdBy: user.id,
   });
-  return NextResponse.json({ roomId: room.roomId, matched: false });
+  return NextResponse.json({ roomId: room.roomId });
 }

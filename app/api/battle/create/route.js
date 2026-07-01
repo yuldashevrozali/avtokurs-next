@@ -39,7 +39,7 @@ export async function POST(req) {
   if (!['friend', 'random'].includes(mode)) {
     return NextResponse.json({ message: "Noto'g'ri rejim" }, { status: 400 });
   }
-  const clampedMax = Math.min(Math.max(parseInt(maxPlayers) || 2, 2), 8);
+  const clampedMax = Math.min(Math.max(parseInt(maxPlayers) || 2, 2), 16);
 
   const picked = pickQuestions(source);
   if (!picked) return NextResponse.json({ message: "Manba topilmadi" }, { status: 400 });
