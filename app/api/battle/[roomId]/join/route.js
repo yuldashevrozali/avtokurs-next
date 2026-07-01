@@ -8,26 +8,31 @@ export async function POST(req, { params }) {
   const { user, error } = authRequired(req);
   if (error) return error;
   await connectDB();
-  const dbUser = await User.findById(user.id).select('name');
 
-  const room = await Room.findOneAndUpdate(
-    {
-      roomId: params.roomId,
-      status: 'waiting',
-      mode: 'friend',
-      'p1.userId': { $ne: user.id },
-      p2: null,
-    },
-    {
-      $set: {
-        p2: { userId: user.id, name: dbUser.name, answeredCount: 0, correctCount: 0, done: false },
-        status: 'playing',
-        startedAt: new Date(),
-      },
-    },
-    { new: true },
+  const room = await Room.findOne({ roomId: params.roomId });
+  if (!room) return NextResponse.json({ message: 'Xona topilmadi' }, { status: 404 });
+  if (room.status !== 'waiting') return NextResponse.json({ message: "O'yin boshlangan" }, { status: 400 });
+  if (room.players.some(p => p.userId === user.id)) {
+    return NextResponse.json({ ok: true, alreadyIn: true });
+  }
+  if (room.players.length >= room.maxPlayers) {
+    return NextResponse.json({ message: "Xona to'la" }, { status: 400 });
+  }
+
+  const dbUser = await User.findById(user.id).select('name');
+  await Room.updateOne(
+    { roomId: params.roomId },
+    { $push: { players: { userId: user.id, name: dbUser.name } } },
   );
 
-  if (!room) return NextResponse.json({ message: "Xona topilmadi yoki to'la" }, { status: 404 });
+  // Auto-start if room is full (random mode or friend mode with exact count)
+  const fresh = await Room.findOne({ roomId: params.roomId });
+  if (fresh.players.length >= fresh.maxPlayers && fresh.mode === 'random') {
+    await Room.updateOne(
+      { roomId: params.roomId },
+      { $set: { status: 'playing', startedAt: new Date() } },
+    );
+  }
+
   return NextResponse.json({ ok: true });
 }

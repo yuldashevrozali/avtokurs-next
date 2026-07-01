@@ -18,33 +18,33 @@ export async function POST(req) {
   await connectDB();
   const dbUser = await User.findById(user.id).select('name');
 
-  // Atomically claim an existing waiting random room
+  // Try to join an existing waiting random room
   const joined = await Room.findOneAndUpdate(
     {
       mode: 'random',
       status: 'waiting',
-      'p1.userId': { $ne: user.id },
+      'players.userId': { $ne: user.id },
+      $expr: { $lt: [{ $size: '$players' }, '$maxPlayers'] },
       createdAt: { $gte: new Date(Date.now() - 30000) },
     },
     {
-      $set: {
-        p2: { userId: user.id, name: dbUser.name, answeredCount: 0, correctCount: 0, done: false },
-        status: 'playing',
-        startedAt: new Date(),
-      },
+      $push: { players: { userId: user.id, name: dbUser.name } },
+      $set: { status: 'playing', startedAt: new Date() },
     },
     { new: true },
   );
 
   if (joined) return NextResponse.json({ roomId: joined.roomId, matched: true });
 
-  // No room found — create one and wait
+  // No room — create one and wait
   const roomId = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
   const room = await Room.create({
     roomId,
     mode: 'random',
+    maxPlayers: 2,
     questionIds: pick20(),
-    p1: { userId: user.id, name: dbUser.name },
+    players: [{ userId: user.id, name: dbUser.name }],
+    createdBy: user.id,
   });
   return NextResponse.json({ roomId: room.roomId, matched: false });
 }

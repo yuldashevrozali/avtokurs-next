@@ -15,18 +15,21 @@ function pick20() {
 export async function POST(req) {
   const { user, error } = authRequired(req);
   if (error) return error;
-  const { mode } = await req.json();
+  const { mode, maxPlayers = 2 } = await req.json();
   if (!['friend', 'random'].includes(mode)) {
-    return NextResponse.json({ message: 'Noto\'g\'ri rejim' }, { status: 400 });
+    return NextResponse.json({ message: "Noto'g'ri rejim" }, { status: 400 });
   }
+  const clampedMax = Math.min(Math.max(parseInt(maxPlayers) || 2, 2), 8);
   await connectDB();
   const dbUser = await User.findById(user.id).select('name');
   const roomId = randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
   const room = await Room.create({
     roomId,
     mode,
+    maxPlayers: clampedMax,
     questionIds: pick20(),
-    p1: { userId: user.id, name: dbUser.name },
+    players: [{ userId: user.id, name: dbUser.name }],
+    createdBy: user.id,
   });
   return NextResponse.json({ roomId: room.roomId });
 }

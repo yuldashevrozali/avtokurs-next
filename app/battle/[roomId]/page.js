@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
@@ -7,296 +7,277 @@ import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
+const MEDALS = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣'];
 
 export default function BattleRoomPage() {
   const { roomId } = useParams();
   const router = useRouter();
-
-  const [phase, setPhase] = useState('loading'); // loading|waiting|joining|playing|finished
-  const [room, setRoom] = useState(null);
-  const [questions, setQuestions] = useState([]);
-  const [qIdx, setQIdx] = useState(0);
-  const [selected, setSelected] = useState(null); // selected variant index
-  const [lastResult, setLastResult] = useState(null); // { isCorrect }
-  const [myStats, setMyStats] = useState({ answeredCount: 0, correctCount: 0 });
-  const [oppStats, setOppStats] = useState({ name: '...', answeredCount: 0, correctCount: 0, done: false });
-  const [elapsed, setElapsed] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const [myId, setMyId] = useState('');
-  const [myName, setMyName] = useState('');
   const { lang } = useLang();
   const t = T[lang];
 
+  const [phase, setPhase] = useState('loading'); // loading | joining | waiting | playing | done
+  const [room, setRoom] = useState(null);
+  const [myId, setMyId] = useState('');
+  const [errMsg, setErrMsg] = useState('');
+
+  const [questions, setQuestions] = useState([]);
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [answeredCount, setAnsweredCount] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [players, setPlayers] = useState([]);
+
+  const [copied, setCopied] = useState(false);
   const pollRef = useRef(null);
-  const timerRef = useRef(null);
-  const startedAtRef = useRef(null);
-  const gameActiveRef = useRef(false);
+  const autoRef = useRef(null);
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
 
   useEffect(() => {
-    const u = localStorage.getItem('user');
-    if (!u) { router.push('/login'); return; }
-    const parsed = JSON.parse(u);
-    setMyId(parsed.id);
-    setMyName(parsed.name || '');
-    initRoom();
-    return () => {
-      clearInterval(pollRef.current);
-      clearInterval(timerRef.current);
-    };
+    const raw = localStorage.getItem('user');
+    if (!raw) { router.push('/login'); return; }
+    setMyId(JSON.parse(raw).id);
   }, []);
 
-  async function initRoom() {
+  const fetchRoom = useCallback(async () => {
     try {
       const data = await apiFetch(`/battle/${roomId}`);
       setRoom(data);
+      setPlayers(data.players || []);
 
       if (data.status === 'finished') {
-        handleFinished(data);
+        clearInterval(pollRef.current);
+        setPhase('done');
         return;
       }
-
       if (data.status === 'playing') {
-        startGame(data);
-        return;
-      }
-
-      // Waiting room
-      if (!data.amIn) {
-        // Try to join as p2
-        setPhase('joining');
-        try {
-          await apiFetch(`/battle/${roomId}/join`, { method: 'POST' });
-          const fresh = await apiFetch(`/battle/${roomId}`);
-          startGame(fresh);
-        } catch {
-          setPhase('error');
+        if (phaseRef.current !== 'playing') {
+          setQuestions(data.questions || []);
+          setPhase('playing');
         }
+        clearInterval(pollRef.current);
         return;
       }
-
-      // I'm p1, waiting for p2
-      setPhase('waiting');
-      pollRef.current = setInterval(async () => {
-        try {
-          const d = await apiFetch(`/battle/${roomId}`);
-          if (d.status === 'playing') {
-            clearInterval(pollRef.current);
-            startGame(d);
-          } else if (d.status === 'finished') {
-            clearInterval(pollRef.current);
-            handleFinished(d);
-          }
-        } catch {}
-      }, 2000);
+      // waiting
+      if (!data.amIn) setPhase('joining');
+      else setPhase('waiting');
     } catch {
-      setPhase('error');
+      setErrMsg(t.room_404);
+    }
+  }, [roomId, t]);
+
+  useEffect(() => {
+    if (!myId) return;
+    fetchRoom();
+  }, [myId]);
+
+  // Poll while waiting
+  useEffect(() => {
+    if (phase !== 'waiting') { clearInterval(pollRef.current); return; }
+    pollRef.current = setInterval(fetchRoom, 2500);
+    return () => clearInterval(pollRef.current);
+  }, [phase, fetchRoom]);
+
+  // Poll live scores while playing
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    const iv = setInterval(async () => {
+      try {
+        const data = await apiFetch(`/battle/${roomId}`);
+        setPlayers(data.players || []);
+        if (data.status === 'finished') {
+          setPlayers(data.players || []);
+          clearInterval(iv);
+          setPhase('done');
+        }
+      } catch {}
+    }, 3000);
+    return () => clearInterval(iv);
+  }, [phase, roomId]);
+
+  async function joinRoom() {
+    setPhase('loading');
+    try {
+      await apiFetch(`/battle/${roomId}/join`, { method: 'POST' });
+      fetchRoom();
+    } catch (e) {
+      setErrMsg(e.message || t.room_full);
     }
   }
 
-  function startGame(data) {
-    gameActiveRef.current = true;
-    setRoom(data);
-    setQuestions(data.questions || []);
-    setMyStats(data.me || { answeredCount: 0, correctCount: 0 });
-    setOppStats(data.opponent || { name: '...', answeredCount: 0, correctCount: 0, done: false });
-    startedAtRef.current = new Date(data.startedAt).getTime();
-    setPhase('playing');
-
-    // Timer
-    timerRef.current = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
-    }, 1000);
-
-    // Poll opponent progress every 2s
-    pollRef.current = setInterval(async () => {
-      if (!gameActiveRef.current) return;
-      try {
-        const d = await apiFetch(`/battle/${roomId}`);
-        setOppStats(d.opponent || {});
-        if (d.status === 'finished') {
-          clearInterval(pollRef.current);
-          clearInterval(timerRef.current);
-          gameActiveRef.current = false;
-          setRoom(d);
-          setPhase('finished');
-        }
-      } catch {}
-    }, 2000);
+  async function startGame() {
+    try {
+      await apiFetch(`/battle/${roomId}/start`, { method: 'POST' });
+      fetchRoom();
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
-  function handleFinished(data) {
-    clearInterval(pollRef.current);
-    clearInterval(timerRef.current);
-    gameActiveRef.current = false;
-    setRoom(data);
-    setPhase('finished');
-  }
-
-  async function selectAnswer(idx) {
-    if (selected !== null || lastResult !== null) return;
-    setSelected(idx);
-
+  async function answer(selectedIdx) {
+    if (selected !== null) return;
+    setSelected(selectedIdx);
     try {
       const res = await apiFetch(`/battle/${roomId}/answer`, {
         method: 'POST',
-        body: JSON.stringify({ questionIdx: qIdx, selectedIndex: idx }),
+        body: JSON.stringify({ questionIdx: idx, selectedIndex: selectedIdx }),
       });
-      setLastResult({ isCorrect: res.isCorrect });
-      setMyStats({ answeredCount: res.answeredCount, correctCount: res.correctCount });
-
-      if (res.answeredCount >= 20) {
-        // I'm done — wait for opponent via polling
-        clearInterval(timerRef.current);
-        return;
+      const newAnswered = res.answeredCount;
+      const newCorrect = res.correctCount;
+      setAnsweredCount(newAnswered);
+      setCorrectCount(newCorrect);
+      setPlayers(prev => prev.map(p => p.userId === myId
+        ? { ...p, answeredCount: newAnswered, correctCount: newCorrect, done: newAnswered >= 20 }
+        : p
+      ));
+      clearTimeout(autoRef.current);
+      if (newAnswered >= 20) {
+        autoRef.current = setTimeout(async () => {
+          const data = await apiFetch(`/battle/${roomId}`);
+          setPlayers(data.players || []);
+          setPhase('done');
+        }, 900);
+      } else {
+        autoRef.current = setTimeout(() => {
+          setIdx(i => i + 1);
+          setSelected(null);
+        }, 800);
       }
-
-      // Auto-advance after 1.2s
-      setTimeout(() => {
-        setQIdx(i => i + 1);
-        setSelected(null);
-        setLastResult(null);
-      }, 1200);
     } catch {
       setSelected(null);
     }
   }
 
-  function fmtTime(s) {
-    const m = Math.floor(s / 60).toString().padStart(2, '0');
-    const sec = (s % 60).toString().padStart(2, '0');
-    return `${m}:${sec}`;
-  }
-
-  function fmtFinishTime(rm, isP1) {
-    if (!rm?.startedAt) return '-';
-    const player = isP1 ? rm.p1 : rm.p2;
-    if (!player?.finishedAt) return '-';
-    const ms = new Date(player.finishedAt) - new Date(rm.startedAt);
-    return fmtTime(Math.floor(ms / 1000));
-  }
-
   function copyLink() {
-    navigator.clipboard.writeText(`${window.location.origin}/battle/${roomId}`)
-      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    const url = `${window.location.origin}/battle/${roomId}`;
+    navigator.clipboard.writeText(url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
   }
-
-  const q = questions[qIdx];
-  const correctIdx = q?.variants.findIndex(v => v.is_correct) ?? -1;
 
   // ── LOADING ──
-  if (phase === 'loading' || phase === 'joining') {
-    return (
-      <>
-        <Navbar />
-        <div style={{ maxWidth: 600, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
-          <p style={{ color: 'var(--text-muted)' }}>{phase === 'joining' ? t.joining : t.loading}</p>
-        </div>
-      </>
-    );
-  }
+  if (phase === 'loading') return (
+    <><Navbar /><div className="container" style={{ paddingTop: '4rem', textAlign: 'center' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>
+  );
 
   // ── ERROR ──
-  if (phase === 'error') {
-    return (
-      <>
-        <Navbar />
-        <div style={{ maxWidth: 600, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❌</div>
-          <h2 style={{ color: 'var(--text)' }}>{t.room_404}</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>{t.room_full}</p>
-          <Link href="/battle" className="btn btn-primary">{t.back_battle}</Link>
-        </div>
-      </>
-    );
-  }
+  if (errMsg) return (
+    <>
+      <Navbar />
+      <div style={{ maxWidth: 480, margin: '4rem auto', padding: '1rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>😕</div>
+        <p style={{ color: 'var(--text)', marginBottom: '1.5rem' }}>{errMsg}</p>
+        <Link href="/battle" className="btn btn-primary">{t.back_battle}</Link>
+      </div>
+    </>
+  );
 
-  // ── WAITING (friend mode, I'm p1) ──
-  if (phase === 'waiting') {
-    const link = typeof window !== 'undefined' ? `${window.location.origin}/battle/${roomId}` : '';
-    return (
-      <>
-        <Navbar />
-        <div style={{ maxWidth: 520, margin: '3rem auto', padding: '1rem' }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🔗</div>
-            <h2 style={{ color: 'var(--text)', margin: '0 0 0.5rem' }}>{t.waiting_friend}</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-              {t.waiting_sub}
-            </p>
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
-              <input readOnly value={link}
-                style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.85rem', outline: 'none', minWidth: 0 }} />
-              <button onClick={copyLink}
-                style={{ padding: '0.6rem 1rem', background: copied ? '#16A34A' : '#3B82F6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
-                {copied ? '✓' : t.copy_short}
-              </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', justifyContent: 'center' }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#22C55E', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-              {t.opp_wait}
-            </div>
-            <Link href="/battle" style={{ display: 'block', marginTop: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none' }}>
-              ← {t.back_battle}
-            </Link>
+  // ── JOIN ──
+  if (phase === 'joining') return (
+    <>
+      <Navbar />
+      <div style={{ maxWidth: 480, margin: '3rem auto', padding: '1rem' }}>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '2rem 1.5rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎮</div>
+          <h2 style={{ color: 'var(--text)', marginBottom: '0.5rem' }}>
+            {room?.mode === 'random' ? t.random_mode : t.friend_mode}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+            {players.length} / {room?.maxPlayers || 2} {t.players_l}
+          </p>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.25rem' }}>{t.room_code_l}</p>
+            <p style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.15em', color: 'var(--text)', margin: 0 }}>{roomId}</p>
           </div>
+          <button onClick={joinRoom} style={{ width: '100%', padding: '0.85rem', background: '#3B82F6', color: 'white', border: 'none', borderRadius: 8, fontWeight: 700, cursor: 'pointer', fontSize: '1rem' }}>
+            {t.joining}
+          </button>
         </div>
-        <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }`}</style>
-      </>
-    );
-  }
+      </div>
+    </>
+  );
 
-  // ── FINISHED ──
-  if (phase === 'finished' && room) {
-    const iWon = room.winnerId === myId;
-    const r = room;
-    const myIsP1 = r.isP1;
-    const myData = myIsP1 ? r.p1 : r.p2;
-    const oppData = myIsP1 ? r.p2 : r.p1;
-    const myTime = fmtFinishTime(r, myIsP1);
-    const oppTime = fmtFinishTime(r, !myIsP1);
-
+  // ── WAITING ROOM ──
+  if (phase === 'waiting') {
+    const isCreator = room?.createdBy === myId;
+    const canStart = players.length >= 2;
     return (
       <>
         <Navbar />
         <div style={{ maxWidth: 520, margin: '2rem auto', padding: '1rem' }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', textAlign: 'center' }}>
-            <div style={{ padding: '2rem', background: iWon ? 'linear-gradient(135deg,#16A34A,#15803D)' : 'linear-gradient(135deg,#DC2626,#B91C1C)', color: 'white' }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: '0.75rem' }}>{iWon ? '🏆' : '😔'}</div>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>
-                {iWon ? t.you_won : t.you_lost}
-              </h2>
-              <p style={{ margin: '0.5rem 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
-                {iWon ? t.pts_plus : t.pts_minus}
-              </p>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+
+            <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text)' }}>{t.waiting_room}</h2>
+                <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{players.length} / {room?.maxPlayers || 2} {t.players_l}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.room_code_l}</p>
+                <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, letterSpacing: '0.1em', color: 'var(--text)' }}>{roomId}</p>
+              </div>
             </div>
-            <div style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                {[
-                  { label: myData?.name || t.you_l, data: myData, time: myTime, isMe: true },
-                  { label: oppData?.name || t.opp_l, data: oppData, time: oppTime, isMe: false },
-                ].map(({ label, data: pd, time, isMe }) => (
-                  <div key={label} style={{ padding: '1rem', background: 'var(--bg)', borderRadius: 10, border: `2px solid ${isMe ? '#3B82F6' : 'var(--border)'}` }}>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{isMe ? t.you_l : t.opp_l}</div>
-                    <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.95rem', marginBottom: '0.5rem' }}>{label}</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#16A34A' }}>{pd?.correctCount ?? 0}/20</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>⏱ {time}</div>
+
+            <div style={{ padding: '1rem 1.5rem' }}>
+              {Array.from({ length: room?.maxPlayers || 2 }).map((_, i) => {
+                const player = players[i];
+                const isMe = player?.userId === myId;
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 0.875rem', borderRadius: 8, marginBottom: '0.5rem',
+                    background: player ? (isMe ? 'rgba(59,130,246,0.08)' : 'var(--bg)') : 'var(--bg)',
+                    border: `1.5px solid ${player ? (isMe ? '#3B82F6' : 'var(--border)') : 'var(--border)'}`,
+                    opacity: player ? 1 : 0.5,
+                  }}>
+                    {player ? (
+                      <>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: isMe ? '#3B82F6' : '#8B5CF6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.9rem', flexShrink: 0 }}>
+                          {player.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)', fontSize: '0.9rem' }}>
+                            {player.name} {isMe ? (lang === 'uz' ? '(Siz)' : '(Сиз)') : ''}
+                          </p>
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: '#16A34A' }}>
+                            {lang === 'uz' ? '✓ Tayyor' : '✓ Тайёр'}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '1rem', flexShrink: 0 }}>⏳</div>
+                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{t.slot_empty}</p>
+                      </>
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })}
+            </div>
 
-              {myData?.correctCount === oppData?.correctCount && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                  {t.tie_note}
-                </p>
+            <div style={{ padding: '0 1.5rem 0.875rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input readOnly value={`${typeof window !== 'undefined' ? window.location.origin : ''}/battle/${roomId}`}
+                  style={{ flex: 1, padding: '0.55rem 0.75rem', border: '1.5px solid var(--border)', borderRadius: 8, background: 'var(--bg)', color: 'var(--text)', fontSize: '0.8rem', outline: 'none' }} />
+                <button onClick={copyLink}
+                  style={{ padding: '0.55rem 0.875rem', background: copied ? '#16A34A' : 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                  {copied ? t.copied_l : t.copy_l}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ padding: '0 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {isCreator ? (
+                <button onClick={startGame} disabled={!canStart}
+                  style={{ padding: '0.85rem', background: canStart ? '#16A34A' : 'var(--border)', color: canStart ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: 8, fontWeight: 700, cursor: canStart ? 'pointer' : 'not-allowed', fontSize: '1rem' }}>
+                  {canStart ? t.start_game : t.need_more}
+                </button>
+              ) : (
+                <div style={{ padding: '0.85rem', background: 'var(--bg)', borderRadius: 8, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  {lang === 'uz' ? "⏳ Xona egasi o'yinni boshlashini kuting" : '⏳ Хона эгаси ўйинни бошлашини кутинг'}
+                </div>
               )}
-
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <Link href="/battle" className="btn btn-primary">{t.rematch}</Link>
-                <Link href="/" style={{ padding: '0.6rem 1.25rem', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', textDecoration: 'none', fontSize: '0.9rem' }}>
-                  {t.home_l}
-                </Link>
-              </div>
+              <Link href="/battle" style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem', textDecoration: 'none' }}>
+                {t.back_battle}
+              </Link>
             </div>
           </div>
         </div>
@@ -305,118 +286,163 @@ export default function BattleRoomPage() {
   }
 
   // ── PLAYING ──
-  if (!q) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
+  if (phase === 'playing') {
+    const q = questions[idx];
+    if (!q) return null;
+    const correctIdx = q.variants.findIndex(v => v.is_correct);
+    const sortedPlayers = [...players].sort((a, b) => {
+      if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+      return (b.answeredCount - a.answeredCount);
+    });
 
-  const myDone = myStats.answeredCount >= 20;
+    return (
+      <>
+        <Navbar />
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0.75rem 1rem' }}>
 
-  return (
-    <>
-      <Navbar />
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '1rem' }}>
-
-        {/* Players header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.875rem 1rem' }}>
-          {/* Me */}
-          <div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{t.you_l}</div>
-            <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{myName || t.you_l}</div>
-            <ProgressBar done={myStats.answeredCount} correct={myStats.correctCount} />
-          </div>
-
-          {/* Timer */}
-          <div style={{ textAlign: 'center', minWidth: 64 }}>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(elapsed)}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>VS</div>
-          </div>
-
-          {/* Opponent */}
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>{t.opp_l}</div>
-            <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{oppStats.name || '...'}</div>
-            <ProgressBar done={oppStats.answeredCount} correct={oppStats.correctCount} reverse />
-          </div>
-        </div>
-
-        {/* Waiting for opponent after finishing */}
-        {myDone && (
-          <div style={{ background: '#FEF9C3', border: '1.5px solid #FDE047', borderRadius: 8, padding: '0.75rem 1rem', marginBottom: '1rem', textAlign: 'center', color: '#713F12', fontSize: '0.875rem', fontWeight: 500 }}>
-            ⏳ {t.wait_done} ({oppStats.answeredCount}/20 {t.answered})
-          </div>
-        )}
-
-        {/* Question */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          {/* Q number */}
-          <div style={{ padding: '0.6rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              {t.q_l} <strong style={{ color: 'var(--text)' }}>{qIdx + 1}</strong> / {questions.length}
-            </span>
-            {/* mini progress dots */}
-            <div style={{ display: 'flex', gap: 3 }}>
-              {questions.map((_, i) => (
-                <div key={i} style={{ width: 8, height: 8, borderRadius: '50%', background: i < myStats.answeredCount ? '#16A34A' : i === qIdx ? '#3B82F6' : 'var(--border)' }} />
-              ))}
-            </div>
-          </div>
-
-          {q.image_url && (
-            <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 220, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-          )}
-
-          <div style={{ padding: '1.25rem' }}>
-            <p style={{ fontSize: '1rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1.1rem' }}>{q.text[lang] || q.text.uz}</p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem' }}>
-              {q.variants.map((v, i) => {
-                let bg = 'var(--surface)';
-                let border = '1.5px solid var(--border)';
-                let color = 'var(--text)';
-                if (selected !== null) {
-                  if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
-                  if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
-                }
+          {/* Live leaderboard */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '0.875rem' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.live_score}</p>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {sortedPlayers.map((p, i) => {
+                const isMe = p.userId === myId;
                 return (
-                  <button key={i} onClick={() => selectAnswer(i)}
-                    disabled={selected !== null || myDone}
-                    style={{ padding: '0.8rem 1rem', border, borderRadius: 8, background: bg, color, textAlign: 'left', fontSize: '0.9rem', cursor: selected === null && !myDone ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', lineHeight: 1.4 }}>
-                    <span style={{ minWidth: 22, height: 22, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0, color: 'var(--text-muted)' }}>
-                      {LABELS[i]}
-                    </span>
-                    {v.text[lang] || v.text.uz}
-                  </button>
+                  <div key={p.userId} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.35rem',
+                    padding: '0.3rem 0.6rem', borderRadius: 20,
+                    background: isMe ? '#EFF6FF' : 'var(--bg)',
+                    border: `1.5px solid ${isMe ? '#3B82F6' : 'var(--border)'}`,
+                    fontSize: '0.8rem',
+                  }}>
+                    <span>{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}.`}</span>
+                    <span style={{ fontWeight: isMe ? 700 : 500, color: isMe ? '#1D4ED8' : 'var(--text)' }}>{p.name.split(' ')[0]}</span>
+                    <span style={{ color: '#16A34A', fontWeight: 700 }}>{p.correctCount}</span>
+                    <span style={{ color: 'var(--text-muted)' }}>/{p.answeredCount}</span>
+                    {p.done && <span style={{ color: '#16A34A' }}>✓</span>}
+                  </div>
                 );
               })}
             </div>
+          </div>
 
-            {lastResult !== null && (
-              <div style={{ marginTop: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.6rem 0.875rem', borderRadius: 8, background: lastResult.isCorrect ? '#F0FDF4' : '#FEF2F2', border: `1px solid ${lastResult.isCorrect ? '#86EFAC' : '#FCA5A5'}` }}>
-                <span style={{ fontSize: '1.2rem' }}>{lastResult.isCorrect ? '✅' : '❌'}</span>
-                <span style={{ fontWeight: 600, color: lastResult.isCorrect ? '#166534' : '#991B1B', fontSize: '0.9rem' }}>
-                  {lastResult.isCorrect ? t.correct : t.wrong}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              <strong style={{ color: 'var(--text)' }}>{idx + 1}</strong> / {questions.length}
+            </span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#16A34A' }}>
+              {correctCount} {lang === 'uz' ? "to'g'ri" : 'тўғри'}
+            </span>
+          </div>
+          <div className="progress-bar-wrap" style={{ marginBottom: '0.875rem' }}>
+            <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${Math.round((idx / questions.length) * 100)}%`, transition: 'width 0.3s' }} />
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            {q.image_url && <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />}
+            <div style={{ padding: '1.25rem' }}>
+              <p style={{ fontSize: '0.975rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1rem' }}>
+                {q.text[lang] || q.text.uz}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                {q.variants.map((v, i) => {
+                  let bg = 'var(--surface)', border = '1.5px solid var(--border)', color = 'var(--text)';
+                  if (selected !== null) {
+                    if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
+                    if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
+                  }
+                  return (
+                    <button key={i} onClick={() => answer(i)} disabled={selected !== null}
+                      style={{ padding: '0.8rem 1rem', border, borderRadius: 8, background: bg, color, textAlign: 'left', fontSize: '0.9rem', cursor: selected === null ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', lineHeight: 1.4 }}>
+                      <span style={{ minWidth: 22, height: 22, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, color: 'var(--text-muted)' }}>
+                        {LABELS[i]}
+                      </span>
+                      <span>{v.text[lang] || v.text.uz}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {selected !== null && (
+              <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontWeight: 600, color: selected === correctIdx ? '#16A34A' : '#DC2626', fontSize: '0.875rem' }}>
+                  {selected === correctIdx ? t.correct : t.wrong}
                 </span>
-                <span style={{ marginLeft: 'auto', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {myStats.correctCount}/{myStats.answeredCount} ✓
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {answeredCount < 20 ? (lang === 'uz' ? 'Keyingi savol...' : 'Кейинги савол...') : ''}
                 </span>
               </div>
             )}
           </div>
         </div>
-      </div>
-    </>
-  );
-}
+      </>
+    );
+  }
 
-function ProgressBar({ done, correct, reverse }) {
-  const pct = Math.round((done / 20) * 100);
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: reverse ? 'flex-end' : 'flex-start', gap: '0.5rem', marginBottom: '0.3rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-        <span>{done}/20</span>
-        <span style={{ color: '#16A34A', fontWeight: 600 }}>{correct}✓</span>
-      </div>
-      <div style={{ height: 6, background: 'var(--border)', borderRadius: 99, overflow: 'hidden', direction: reverse ? 'rtl' : 'ltr' }}>
-        <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#3B82F6,#8B5CF6)', borderRadius: 99, transition: 'width 0.3s' }} />
-      </div>
-    </div>
-  );
+  // ── DONE ──
+  if (phase === 'done') {
+    const sorted = [...players].sort((a, b) => {
+      if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
+      return (a.rank || 99) - (b.rank || 99);
+    });
+    const myRank = sorted.findIndex(p => p.userId === myId) + 1;
+    const iWon = myRank === 1;
+    const myPts = myRank === 1 ? '+8' : myRank === 2 ? '+2' : myRank === 3 ? '+1' : '−3';
+
+    return (
+      <>
+        <Navbar />
+        <div style={{ maxWidth: 520, margin: '2rem auto', padding: '1rem' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+
+            <div style={{ padding: '1.75rem 1.5rem 1.25rem', textAlign: 'center', background: iWon ? 'linear-gradient(135deg,#F0FDF4,#DCFCE7)' : 'var(--surface)' }}>
+              <div style={{ fontSize: '3.5rem', marginBottom: '0.5rem' }}>{MEDALS[myRank - 1] || '🏅'}</div>
+              <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--text)', margin: '0 0 0.25rem' }}>
+                {iWon
+                  ? (lang === 'uz' ? "Tabriklaymiz! Siz g'olib!" : 'Табриклаймиз! Сиз ғолиб!')
+                  : `${myRank}-${lang === 'uz' ? "o'rin" : 'ўрин'}`}
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+                {correctCount} / 20 {lang === 'uz' ? "to'g'ri" : 'тўғри'} &nbsp;·&nbsp; {myPts} {t.pts_l}
+              </p>
+            </div>
+
+            <div style={{ padding: '1rem 1.5rem' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                {t.final_result}
+              </p>
+              {sorted.map((p, i) => {
+                const isMe = p.userId === myId;
+                const pts = i === 0 ? '+8' : i === 1 ? '+2' : i === 2 ? '+1' : '−3';
+                return (
+                  <div key={p.userId} style={{
+                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                    padding: '0.75rem 0.875rem', borderRadius: 8, marginBottom: '0.5rem',
+                    background: isMe ? '#EFF6FF' : i === 0 ? '#FFFBEB' : 'var(--bg)',
+                    border: `1.5px solid ${isMe ? '#3B82F6' : i === 0 ? '#FCD34D' : 'var(--border)'}`,
+                  }}>
+                    <span style={{ fontSize: '1.25rem', minWidth: 28, textAlign: 'center' }}>{MEDALS[i]}</span>
+                    <span style={{ flex: 1, fontWeight: isMe ? 700 : 500, color: 'var(--text)', fontSize: '0.9rem' }}>
+                      {p.name} {isMe ? (lang === 'uz' ? '(Siz)' : '(Сиз)') : ''}
+                    </span>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem' }}>{p.correctCount} / 20</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: i < 3 ? '#059669' : '#DC2626' }}>{pts} {t.pts_l}</p>
+                    </div>
+                    {!p.done && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>⏳</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ padding: '0 1.5rem 1.5rem', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <Link href="/battle" className="btn btn-primary" style={{ flex: 1, textAlign: 'center' }}>{t.back_battle}</Link>
+              <Link href="/" className="btn btn-outline" style={{ flex: 1, textAlign: 'center' }}>{t.home_l}</Link>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return null;
 }

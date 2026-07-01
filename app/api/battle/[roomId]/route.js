@@ -15,8 +15,7 @@ export async function GET(req, { params }) {
   const room = await Room.findOne({ roomId: params.roomId });
   if (!room) return NextResponse.json({ message: 'Xona topilmadi' }, { status: 404 });
 
-  const isP1 = room.p1.userId === user.id;
-  const isP2 = room.p2?.userId === user.id;
+  const amIn = room.players.some(p => p.userId === user.id);
 
   let questions = null;
   if (room.status !== 'waiting') {
@@ -27,22 +26,26 @@ export async function GET(req, { params }) {
     }).filter(Boolean);
   }
 
-  const me = isP1 ? room.p1 : isP2 ? room.p2 : null;
-  const opp = isP1 ? room.p2 : isP2 ? room.p1 : null;
+  const players = room.players.map(p => ({
+    userId: p.userId,
+    name: p.name,
+    answeredCount: p.answeredCount,
+    correctCount: p.correctCount,
+    done: p.done,
+    rank: p.rank,
+  }));
 
   return NextResponse.json({
     roomId: room.roomId,
     mode: room.mode,
+    maxPlayers: room.maxPlayers,
     status: room.status,
-    amIn: isP1 || isP2,
-    isP1,
-    questions,
-    me: me ? { name: me.name, answeredCount: me.answeredCount, correctCount: me.correctCount, done: me.done } : null,
-    opponent: opp ? { name: opp.name, answeredCount: opp.answeredCount, correctCount: opp.correctCount, done: opp.done } : null,
-    winnerId: room.winnerId,
+    amIn,
     myId: user.id,
-    p1: { name: room.p1.name, correctCount: room.p1.correctCount, answeredCount: room.p1.answeredCount, done: room.p1.done, finishedAt: room.p1.finishedAt },
-    p2: room.p2 ? { name: room.p2.name, correctCount: room.p2.correctCount, answeredCount: room.p2.answeredCount, done: room.p2.done, finishedAt: room.p2.finishedAt } : null,
+    createdBy: room.createdBy,
+    players,
+    questions,
+    winnerId: room.winnerId,
     startedAt: room.startedAt,
     createdAt: room.createdAt,
   });
