@@ -1,6 +1,7 @@
 import './globals.css';
 import LangProvider from '@/components/LangProvider';
 import MobileNav from '@/components/MobileNav';
+import Footer from '@/components/Footer';
 export const metadata = {
   title: "Avtotest — Haydovchilik imtihoniga onlayn tayyorlanish",
   description: "Haydovchilik guvohnomasi olish uchun onlayn test ishlang. Yo'l harakati qoidalari bo'yicha 1200+ savol, biletlar, imtihon simulatsiyasi. Bepul tayyorlaning!",
@@ -29,10 +30,12 @@ export default function RootLayout({ children }) {
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <script dangerouslySetInnerHTML={{__html: `(function(){var t=localStorage.getItem('theme');if(t==='dark')document.documentElement.setAttribute('data-theme','dark');var f=parseInt(localStorage.getItem('font-size'));if(f>=14&&f<=20)document.documentElement.style.fontSize=f+'px';})()`}} />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7971219899857261" crossOrigin="anonymous" />
       </head>
       <body>
         <LangProvider>
           {children}
+          <Footer />
           <MobileNav />
         </LangProvider>
       </body>
