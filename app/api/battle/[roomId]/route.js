@@ -48,5 +48,8 @@ export async function GET(req, { params }) {
     winnerId: room.winnerId,
     startedAt: room.startedAt,
     createdAt: room.createdAt,
+    questionSource: room.questionSource || 'random',
+    questionSourceId: room.questionSourceId ?? null,
+    questionSourceName: room.questionSourceName ?? null,
   });
 }

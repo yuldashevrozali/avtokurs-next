@@ -11,11 +11,14 @@ const playerSchema = new mongoose.Schema({
 }, { _id: false });
 
 const schema = new mongoose.Schema({
-  roomId:     { type: String, required: true, unique: true },
-  mode:       { type: String, enum: ['friend', 'random'], required: true },
-  maxPlayers: { type: Number, default: 2, min: 2, max: 8 },
-  questionIds:[Number],
-  status:     { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' },
+  roomId:          { type: String, required: true, unique: true },
+  mode:            { type: String, enum: ['friend', 'random'], required: true },
+  maxPlayers:      { type: Number, default: 2, min: 2, max: 8 },
+  questionIds:     [Number],
+  questionSource:  { type: String, enum: ['random', 'topic', 'ticket'], default: 'random' },
+  questionSourceId:{ type: Number, default: null },
+  questionSourceName: { type: mongoose.Schema.Types.Mixed, default: null },
+  status:          { type: String, enum: ['waiting', 'playing', 'finished'], default: 'waiting' },
   players:    [playerSchema],
   createdBy:  { type: String, required: true },
   winnerId:   { type: String, default: null },
