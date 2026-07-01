@@ -16,7 +16,6 @@ export default function BattleRoomPage() {
   const { lang } = useLang();
   const t = T[lang];
 
-  // phases: loading | joining | waiting | playing | waiting-others | done
   const [phase, setPhase] = useState('loading');
   const [room, setRoom] = useState(null);
   const [myId, setMyId] = useState('');
@@ -26,12 +25,13 @@ export default function BattleRoomPage() {
   const [totalQ, setTotalQ] = useState(20);
   const [idx, setIdx] = useState(0);
   const [selected, setSelected] = useState(null);
+  const [answers, setAnswers] = useState({}); // { [qIdx]: { selected, correctIdx, isCorrect } }
   const [myAnswered, setMyAnswered] = useState(0);
   const [myCorrect, setMyCorrect] = useState(0);
   const [players, setPlayers] = useState([]);
   const [timeLeft, setTimeLeft] = useState(BATTLE_TIME);
-
   const [copied, setCopied] = useState(false);
+
   const pollRef = useRef(null);
   const autoRef = useRef(null);
   const timerRef = useRef(null);
@@ -51,7 +51,6 @@ export default function BattleRoomPage() {
     return `${m}:${sec}`;
   }
 
-  // Start countdown from startedAt
   function startTimer(startedAt) {
     clearInterval(timerRef.current);
     startedAtRef.current = startedAt;
@@ -102,7 +101,6 @@ export default function BattleRoomPage() {
         clearInterval(pollRef.current);
         return;
       }
-      // waiting
       if (!data.amIn) setPhase('joining');
       else setPhase('waiting');
     } catch {
@@ -115,14 +113,12 @@ export default function BattleRoomPage() {
     fetchRoom();
   }, [myId]);
 
-  // Poll while waiting for game to start
   useEffect(() => {
     if (phase !== 'waiting') { clearInterval(pollRef.current); return; }
     pollRef.current = setInterval(fetchRoom, 2500);
     return () => clearInterval(pollRef.current);
   }, [phase, fetchRoom]);
 
-  // Poll live scores while playing or waiting for others to finish
   useEffect(() => {
     if (phase !== 'playing' && phase !== 'waiting-others') return;
     const iv = setInterval(async () => {
@@ -164,9 +160,36 @@ export default function BattleRoomPage() {
     }
   }
 
+  function goTo(i) {
+    clearTimeout(autoRef.current);
+    setIdx(i);
+    setSelected(answers[i]?.selected ?? null);
+  }
+
+  async function finishMyTest() {
+    clearInterval(pollRef.current);
+    const data = await apiFetch(`/battle/${roomId}`).catch(() => null);
+    if (data) {
+      setPlayers(data.players || []);
+      if (data.status === 'finished') {
+        clearInterval(timerRef.current);
+        setPhase('done');
+        return;
+      }
+    }
+    setPhase('waiting-others');
+  }
+
   async function answer(selectedIdx) {
     if (selected !== null) return;
     setSelected(selectedIdx);
+
+    const q = questions[idx];
+    const correctIdx = q.variants.findIndex(v => v.is_correct);
+    const isCorrect = selectedIdx === correctIdx;
+    const newAnswers = { ...answers, [idx]: { selected: selectedIdx, correctIdx, isCorrect } };
+    setAnswers(newAnswers);
+
     try {
       const res = await apiFetch(`/battle/${roomId}/answer`, {
         method: 'POST',
@@ -182,32 +205,21 @@ export default function BattleRoomPage() {
         : p
       ));
 
+      // Jump to next unanswered question after 600ms (don't auto-finish)
       clearTimeout(autoRef.current);
-
-      if (newAnswered >= tq) {
-        // I'm done — switch to waiting-others, keep polling
-        autoRef.current = setTimeout(async () => {
-          const data = await apiFetch(`/battle/${roomId}`).catch(() => null);
-          if (data) {
-            setPlayers(data.players || []);
-            if (data.status === 'finished') {
-              clearInterval(timerRef.current);
-              setPhase('done');
-            } else {
-              setPhase('waiting-others');
-            }
-          } else {
-            setPhase('waiting-others');
-          }
-        }, 800);
-      } else {
-        autoRef.current = setTimeout(() => {
-          setIdx(i => i + 1);
+      autoRef.current = setTimeout(() => {
+        let next = -1;
+        for (let i = idx + 1; i < tq; i++) { if (!newAnswers[i]) { next = i; break; } }
+        if (next === -1) { for (let i = 0; i < idx; i++) { if (!newAnswers[i]) { next = i; break; } } }
+        if (next !== -1) {
+          setIdx(next);
           setSelected(null);
-        }, 800);
-      }
+        }
+        // If all answered: stay on current, user presses Yakunlash
+      }, 600);
     } catch {
       setSelected(null);
+      setAnswers(prev => { const n = { ...prev }; delete n[idx]; return n; });
     }
   }
 
@@ -219,13 +231,15 @@ export default function BattleRoomPage() {
   const timerDanger = timeLeft <= 60;
   const timerWarn = timeLeft <= 300;
 
-  // Sorted leaderboard helper
   function sortedPlayers(arr) {
     return [...arr].sort((a, b) => {
       if (b.correctCount !== a.correctCount) return b.correctCount - a.correctCount;
-      return (b.answeredCount - a.answeredCount);
+      return b.answeredCount - a.answeredCount;
     });
   }
+
+  const answeredCount = Object.keys(answers).length;
+  const allAnswered = answeredCount >= totalQ;
 
   // ── LOADING ──
   if (phase === 'loading') return (
@@ -279,8 +293,6 @@ export default function BattleRoomPage() {
     const isRandom = room?.mode === 'random';
     const isCreator = room?.createdBy === myId;
     const canStart = players.length >= 2;
-    // For random 2-player: auto-starts when 2nd joins, don't show start button
-    // For random 3-16: creator can start when ≥2 joined
     const showStartBtn = isCreator && canStart && (!isRandom || room?.maxPlayers > 2);
     const showAutoMsg = isRandom && room?.maxPlayers === 2 && players.length < 2;
 
@@ -310,7 +322,6 @@ export default function BattleRoomPage() {
               </div>
             </div>
 
-            {/* Player slots */}
             <div style={{ padding: '1rem 1.5rem' }}>
               {Array.from({ length: Math.min(room?.maxPlayers || 2, 8) }).map((_, i) => {
                 const player = players[i];
@@ -349,7 +360,6 @@ export default function BattleRoomPage() {
               )}
             </div>
 
-            {/* Share link — only for friend mode */}
             {!isRandom && (
               <div style={{ padding: '0 1.5rem 0.875rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -411,7 +421,7 @@ export default function BattleRoomPage() {
 
           {/* Top bar: live scores + timer */}
           <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.875rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.875rem' }}>
+            <div style={{ flex: 1, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.875rem', minWidth: 0 }}>
               <p style={{ margin: '0 0 0.4rem', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.live_score}</p>
               <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                 {ranked.map((p, i) => {
@@ -428,7 +438,6 @@ export default function BattleRoomPage() {
                 })}
               </div>
             </div>
-            {/* Timer */}
             <div style={{ background: timerDanger ? '#FEF2F2' : 'var(--surface)', border: `1.5px solid ${timerDanger ? '#DC2626' : timerWarn ? '#F59E0B' : 'var(--border)'}`, borderRadius: 10, padding: '0.6rem 0.875rem', textAlign: 'center', minWidth: 80, flexShrink: 0 }}>
               <p style={{ margin: '0 0 0.1rem', fontSize: '0.65rem', color: timerDanger ? '#DC2626' : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                 {timerDanger ? '⚠️' : '⏱'}
@@ -439,18 +448,20 @@ export default function BattleRoomPage() {
             </div>
           </div>
 
+          {/* Progress */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <strong style={{ color: 'var(--text)' }}>{idx + 1}</strong> / {totalQ}
             </span>
             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#16A34A' }}>
-              {myCorrect} {lang === 'uz' ? "to'g'ri" : 'тўғри'}
+              {myCorrect} {lang === 'uz' ? "to'g'ri" : 'тўғри'} · {answeredCount}/{totalQ} {lang === 'uz' ? 'javoblandi' : 'жавобланди'}
             </span>
           </div>
           <div className="progress-bar-wrap" style={{ marginBottom: '0.875rem' }}>
-            <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${Math.round((idx / totalQ) * 100)}%`, transition: 'width 0.3s' }} />
+            <div style={{ height: '100%', borderRadius: 99, background: 'var(--primary)', width: `${Math.round((answeredCount / totalQ) * 100)}%`, transition: 'width 0.3s' }} />
           </div>
 
+          {/* Question card */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
             {q.image_url && <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />}
             <div style={{ padding: '1.25rem' }}>
@@ -459,14 +470,17 @@ export default function BattleRoomPage() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                 {q.variants.map((v, i) => {
+                  const localAnswer = answers[idx];
                   let bg = 'var(--surface)', border = '1.5px solid var(--border)', color = 'var(--text)';
-                  if (selected !== null) {
-                    if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
-                    if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
+                  if (selected !== null || localAnswer) {
+                    const si = localAnswer ? localAnswer.selected : selected;
+                    const ci = localAnswer ? localAnswer.correctIdx : correctIdx;
+                    if (i === ci) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
+                    if (i === si && si !== ci) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
                   }
                   return (
-                    <button key={i} onClick={() => answer(i)} disabled={selected !== null}
-                      style={{ padding: '0.8rem 1rem', border, borderRadius: 8, background: bg, color, textAlign: 'left', fontSize: '0.9rem', cursor: selected === null ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', lineHeight: 1.4 }}>
+                    <button key={i} onClick={() => answer(i)} disabled={selected !== null || !!answers[idx]}
+                      style={{ padding: '0.8rem 1rem', border, borderRadius: 8, background: bg, color, textAlign: 'left', fontSize: '0.9rem', cursor: (selected === null && !answers[idx]) ? 'pointer' : 'default', display: 'flex', gap: '0.75rem', alignItems: 'flex-start', lineHeight: 1.4 }}>
                       <span style={{ minWidth: 22, height: 22, borderRadius: '50%', border: '1.5px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0, color: 'var(--text-muted)' }}>
                         {LABELS[i]}
                       </span>
@@ -476,17 +490,69 @@ export default function BattleRoomPage() {
                 })}
               </div>
             </div>
-            {selected !== null && (
-              <div style={{ padding: '0.875rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontWeight: 600, color: selected === correctIdx ? '#16A34A' : '#DC2626', fontSize: '0.875rem' }}>
-                  {selected === correctIdx ? t.correct : t.wrong}
-                </span>
+
+            {/* Answer feedback */}
+            {(selected !== null || answers[idx]) && (
+              <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {(() => {
+                  const localAnswer = answers[idx];
+                  const si = localAnswer ? localAnswer.selected : selected;
+                  const ci = localAnswer ? localAnswer.correctIdx : correctIdx;
+                  return (
+                    <span style={{ fontWeight: 600, color: si === ci ? '#16A34A' : '#DC2626', fontSize: '0.875rem' }}>
+                      {si === ci ? t.correct : t.wrong}
+                    </span>
+                  );
+                })()}
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  {myAnswered < 20 ? (lang === 'uz' ? 'Keyingi savol...' : 'Кейинги савол...') : ''}
+                  {allAnswered
+                    ? (lang === 'uz' ? '✅ Barcha savollar javoblandi' : '✅ Барча саволлар жавобланди')
+                    : (lang === 'uz' ? 'Qutichadan savol tanlang' : 'Қутичадан савол танланг')}
                 </span>
               </div>
             )}
           </div>
+
+          {/* Q-nav grid */}
+          <div className="q-nav-grid">
+            {questions.map((_, i) => {
+              const a = answers[i];
+              const isCurr = i === idx;
+              return (
+                <div key={i} onClick={() => goTo(i)} className="q-nav-cell"
+                  style={{
+                    background: a
+                      ? (a.isCorrect ? '#DCFCE7' : '#FEE2E2')
+                      : isCurr ? 'var(--primary)' : 'var(--border)',
+                    color: a
+                      ? (a.isCorrect ? '#166534' : '#991B1B')
+                      : isCurr ? 'white' : 'var(--text-muted)',
+                    border: isCurr && !a ? '2px solid var(--primary)' : '2px solid transparent',
+                    boxShadow: isCurr && !a ? '0 0 0 2px var(--primary)' : 'none',
+                  }}>
+                  {i + 1}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Yakunlash button */}
+          <div style={{ marginTop: '0.875rem' }}>
+            <button
+              onClick={finishMyTest}
+              style={{
+                width: '100%', padding: '0.85rem',
+                background: allAnswered ? '#16A34A' : '#6B7280',
+                color: 'white', border: 'none', borderRadius: 8,
+                fontWeight: 700, cursor: 'pointer', fontSize: '1rem',
+                transition: 'background 0.2s',
+              }}>
+              {allAnswered
+                ? (lang === 'uz' ? '✅ Yakunlash' : '✅ Якунлаш')
+                : (lang === 'uz' ? `Yakunlash (${answeredCount}/${totalQ})` : `Якунлаш (${answeredCount}/${totalQ})`)}
+            </button>
+          </div>
+
         </div>
       </>
     );
@@ -503,30 +569,26 @@ export default function BattleRoomPage() {
         <Navbar />
         <div style={{ maxWidth: 520, margin: '2rem auto', padding: '1rem' }}>
 
-          {/* My result card */}
           <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #DCFCE7)', border: '1.5px solid #86EFAC', borderRadius: 12, padding: '1.5rem', textAlign: 'center', marginBottom: '1rem' }}>
             <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>{MEDALS[myPos - 1] || '🏅'}</div>
             <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.2rem', fontWeight: 700, color: '#166534' }}>
-              {lang === 'uz' ? "Siz tugatdingiz!" : 'Сиз тугатдингиз!'}
+              {lang === 'uz' ? "Siz yakunladingiz!" : 'Сиз якунладингиз!'}
             </h2>
             <p style={{ margin: 0, color: '#166534', fontSize: '0.9rem' }}>
-              {myCorrect} / 20 {lang === 'uz' ? "to'g'ri" : 'тўғри'} &nbsp;·&nbsp; {lang === 'uz' ? 'Hozircha' : 'Ҳозирча'} {myPos}-{lang === 'uz' ? "o'rin" : 'ўрин'}
+              {myCorrect} / {totalQ} {lang === 'uz' ? "to'g'ri" : 'тўғри'} &nbsp;·&nbsp; {lang === 'uz' ? 'Hozircha' : 'Ҳозирча'} {myPos}-{lang === 'uz' ? "o'rin" : 'ўрин'}
             </p>
           </div>
 
-          {/* Waiting indicator */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '1.25rem 1.5rem', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
               <p style={{ margin: 0, fontWeight: 600, color: 'var(--text)', fontSize: '0.9rem' }}>
                 ⏳ {othersLeft} {lang === 'uz' ? "ta o'yinchi hali o'ynayabdi" : "та ўйинчи ҳали ўйнаяпти"}
               </p>
-              {/* Live timer */}
               <div style={{ background: timerDanger ? '#FEF2F2' : 'var(--bg)', border: `1.5px solid ${timerDanger ? '#DC2626' : 'var(--border)'}`, borderRadius: 8, padding: '0.3rem 0.6rem', fontWeight: 700, fontSize: '0.9rem', color: timerDanger ? '#DC2626' : 'var(--text)' }}>
                 {timerDanger ? '⚠️' : '⏱'} {formatTime(timeLeft)}
               </div>
             </div>
 
-            {/* Live leaderboard */}
             <p style={{ margin: '0 0 0.5rem', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{t.live_score}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {ranked.map((p, i) => {
@@ -568,6 +630,7 @@ export default function BattleRoomPage() {
     const myRank = sorted.findIndex(p => p.userId === myId) + 1;
     const iWon = myRank === 1;
     const myPts = myRank === 1 ? '+8' : myRank === 2 ? '+2' : myRank === 3 ? '+1' : '−3';
+    const myData = sorted.find(p => p.userId === myId);
 
     return (
       <>
@@ -583,7 +646,7 @@ export default function BattleRoomPage() {
                   : `${myRank}-${lang === 'uz' ? "o'rin" : 'ўрин'}`}
               </h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-                {myCorrect || sorted.find(p => p.userId === myId)?.correctCount || 0} / 20 {lang === 'uz' ? "to'g'ri" : 'тўғри'} &nbsp;·&nbsp; {myPts} {t.pts_l}
+                {myData?.correctCount || 0} / {totalQ} {lang === 'uz' ? "to'g'ri" : 'тўғри'} &nbsp;·&nbsp; {myPts} {t.pts_l}
               </p>
             </div>
 
@@ -601,7 +664,7 @@ export default function BattleRoomPage() {
                       {p.name} {isMe ? (lang === 'uz' ? '(Siz)' : '(Сиз)') : ''}
                     </span>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem' }}>{p.correctCount} / 20</p>
+                      <p style={{ margin: 0, fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem' }}>{p.correctCount} / {totalQ}</p>
                       <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: i < 3 ? '#059669' : '#DC2626' }}>{pts} {t.pts_l}</p>
                     </div>
                     {!p.done && <span style={{ fontSize: '0.75rem', color: '#F59E0B' }}>⏳</span>}
