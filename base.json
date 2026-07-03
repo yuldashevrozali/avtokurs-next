@@ -21181,7 +21181,7 @@
           "is_correct": true
         }
       ],
-      "image_url": "/logo.png"
+      "image_url": "/Isuzu.png"
     },
     {
       "id": 443,
@@ -38829,7 +38829,7 @@
         {
           "id": 0,
           "text": {
-            "ru": "Только B",
+            "ru": "Только Б",
             "uz": "Faqat Б",
             "uz_cryl": "Фақат Б"
           },
@@ -38838,7 +38838,7 @@
         {
           "id": 1,
           "text": {
-            "ru": "А и B",
+            "ru": "А и Б",
             "uz": "A va Б",
             "uz_cryl": "А ва Б"
           },
@@ -38847,18 +38847,18 @@
         {
           "id": 2,
           "text": {
-            "ru": "Только Д",
-            "uz": "Faqat Д",
-            "uz_cryl": "Фақат Д"
+            "ru": "Б  Г",
+            "uz": " Б va Г",
+            "uz_cryl": "Б ва Г"
           },
           "is_correct": true
         },
         {
           "id": 3,
           "text": {
-            "ru": "Только C",
-            "uz": "Faqat C",
-            "uz_cryl": "Фақат C"
+            "ru": "Только Г",
+            "uz": "Faqat Г",
+            "uz_cryl": "Фақат Г"
           },
           "is_correct": false
         }
@@ -41183,15 +41183,6 @@
             "uz": "4",
             "uz_cryl": "4"
           },
-          "is_correct": false
-        },
-        {
-          "id": 4,
-          "text": {
-            "ru": "5",
-            "uz": "5",
-            "uz_cryl": "5"
-          },
           "is_correct": true
         }
       ],
@@ -42655,7 +42646,7 @@
           "is_correct": true
         }
       ],
-      "image_url": "/logo.png"
+      "image_url": "/yalt1.png"
     },
     {
       "id": 983,
@@ -48921,27 +48912,27 @@
         {
           "id": 0,
           "text": {
-            "ru": "Только A и B",
-            "uz": "Faqat A va B",
-            "uz_cryl": "Фақат А ва Б"
+            "ru": "1 и 2",
+            "uz": "1 va 2",
+            "uz_cryl": "1 ва 2"
           },
           "is_correct": false
         },
         {
           "id": 1,
           "text": {
-            "ru": "Только B",
-            "uz": "Faqat B",
-            "uz_cryl": "Фақат Б"
+            "ru": "Только 2",
+            "uz": "Faqat 2",
+            "uz_cryl": "Фақат 2"
           },
           "is_correct": true
         },
         {
           "id": 2,
           "text": {
-            "ru": "Только A",
-            "uz": "Faqat A",
-            "uz_cryl": "Фақат А"
+            "ru": "Только 1",
+            "uz": "Faqat 1",
+            "uz_cryl": "Фақат 1"
           },
           "is_correct": false
         },
@@ -51918,7 +51909,7 @@
           "is_correct": false
         }
       ],
-      "image_url": "/logo.png"
+      "image_url": "/uchlik.png"
     },
     {
       "id": 1212,
