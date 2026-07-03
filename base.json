@@ -43010,9 +43010,9 @@
         {
           "id": 0,
           "text": {
-            "ru": "Только A и C",
-            "uz": "Faqat A va C",
-            "uz_cryl": "Фақат А ва C"
+            "ru": "Только A и B",
+            "uz": "Faqat A va B",
+            "uz_cryl": "Фақат А ва B"
           },
           "is_correct": true
         },
@@ -43028,8 +43028,8 @@
         {
           "id": 2,
           "text": {
-            "ru": "A и B",
-            "uz": "A va B",
+            "ru": "A и Б",
+            "uz": "A va Б",
             "uz_cryl": "А ва Б"
           },
           "is_correct": false
@@ -46848,7 +46848,7 @@
           "is_correct": true
         }
       ],
-      "image_url": "https://storage.googleapis.com/budget-tracker-storage-bucket/driving-tests/tests/20251203_052910_29a31669e8784dd9be75e668b7db4060.jpg"
+      "image_url": "/5.48belgi.png"
     },
     {
       "id": 1088,
@@ -47566,7 +47566,7 @@
           "is_correct": false
         }
       ],
-      "image_url": "https://storage.googleapis.com/budget-tracker-storage-bucket/driving-tests/tests/20251203_052959_7a769f0fb2cc49328d47e215dd1531b3.jpg"
+      "image_url": "/5.15.1pulliktoxtash.png"
     },
     {
       "id": 1105,
@@ -47660,7 +47660,7 @@
           "is_correct": false
         }
       ],
-      "image_url": "/logo.png"
+      "image_url": "/piyoda17.png"
     },
     {
       "id": 1107,
