@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 export const metadata = {
   title: "Maxfiylik siyosati — Avtotest",
-  description: "Avtotest.uz sayti foydalanuvchilar ma'lumotlari va maxfiylik siyosati haqida ma'lumot.",
+  description: "avtoqoida sayti foydalanuvchilar ma'lumotlari va maxfiylik siyosati haqida ma'lumot.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
 
         <Section title="1. Umumiy ma'lumot">
           <p>
-            Ushbu maxfiylik siyosati <strong>Avtotest</strong> (avtotest.uz) sayti foydalanuvchilarining
+            Ushbu maxfiylik siyosati <strong>Avtoqoida</strong> (avtoqoida) sayti foydalanuvchilarining
             shaxsiy ma'lumotlari qanday to'planishi, ishlatilishi va himoya qilinishi haqida ma'lumot beradi.
             Saytdan foydalanish orqali siz ushbu siyosatga rozilik bildirasiz.
           </p>
