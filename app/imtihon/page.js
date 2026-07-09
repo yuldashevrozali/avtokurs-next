@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import { useQuestionNav } from '@/lib/useQuestionNav';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const TOTAL = 20;
@@ -92,6 +93,13 @@ export default function ImtihonPage() {
     setIdx(i);
     setSelected(answers[i]?.selected ?? null);
   }
+
+  useQuestionNav({
+    // Oxirgi savolda gesture imtihonni yakunlamaydi
+    next: () => { if (idx + 1 < questions.length) next(); },
+    prev: () => { if (idx > 0) goTo(idx - 1); },
+    enabled: phase === 'playing',
+  });
 
   async function toggleSave(questionId) {
     const isSaved = savedIds.has(questionId);

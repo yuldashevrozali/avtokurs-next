@@ -2,6 +2,7 @@ import './globals.css';
 import LangProvider from '@/components/LangProvider';
 import MobileNav from '@/components/MobileNav';
 import Footer from '@/components/Footer';
+import TvMode from '@/components/TvMode';
 export const metadata = {
   title: "Avtotest — Haydovchilik imtihoniga onlayn tayyorlanish",
   description: "Haydovchilik guvohnomasi olish uchun onlayn test ishlang. Yo'l harakati qoidalari bo'yicha 1200+ savol, biletlar, imtihon simulatsiyasi. Bepul tayyorlaning!",
@@ -34,9 +35,10 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <LangProvider>
-          {children}
+          <div id="tv-zoom-root">{children}</div>
           <Footer />
           <MobileNav />
+          <TvMode />
         </LangProvider>
       </body>
     </html>

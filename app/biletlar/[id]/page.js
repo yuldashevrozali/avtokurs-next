@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import { useQuestionNav } from '@/lib/useQuestionNav';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -79,6 +80,13 @@ export default function BiletTestPage() {
     localStorage.setItem(`bilet_result_${uid}_${id}`, JSON.stringify({ correct: correctCount, total, percent: pct, date: Date.now() }));
     setDone(true);
   }
+
+  useQuestionNav({
+    // Oxirgi savolda gesture testni yakunlamaydi — faqat "Yakunlash" tugmasi yakunlaydi
+    next: () => { if (idx + 1 < questions.length) { setIdx(idx + 1); setSelected(answers[idx + 1]?.selected ?? null); } },
+    prev: () => { if (idx > 0) { setIdx(idx - 1); setSelected(answers[idx - 1]?.selected ?? null); } },
+    enabled: !done && questions.length > 0,
+  });
 
   function restart() {
     setIdx(0);

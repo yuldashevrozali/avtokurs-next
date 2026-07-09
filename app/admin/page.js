@@ -150,8 +150,17 @@ export default function AdminPage() {
     <>
       <Navbar />
       <div className="container">
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.5rem'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.5rem',gap:'1rem',flexWrap:'wrap'}}>
           <h1 style={{fontSize:'1.4rem'}}>Admin panel</h1>
+          <button onClick={() => { localStorage.setItem('tvMode','1'); window.dispatchEvent(new Event('tvmode-change')); router.push('/mavzular'); }}
+            title="Televizor rejimini yoqish — testga kirganda kontent katta ko'rinadi"
+            style={{display:'inline-flex',alignItems:'center',gap:'0.5rem',background:'#0F172A',color:'white',border:'none',borderRadius:8,padding:'0.55rem 1rem',cursor:'pointer',fontWeight:600,fontSize:'0.9rem'}}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8M12 17v4" />
+            </svg>
+            Monitor (TV rejimi)
+          </button>
         </div>
 
         <div style={{display:'flex',gap:0,borderBottom:'1px solid #E2E8F0',marginBottom:'1.5rem',flexWrap:'wrap'}}>
