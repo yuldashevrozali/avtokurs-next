@@ -2,7 +2,10 @@ import mongoose from 'mongoose';
 const s = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true },
-  password: { type: String, required: true },
+  password: { type: String }, // Telegram orqali kirganlarda parol bo'lmaydi
+  telegramId: { type: String, unique: true, sparse: true }, // Telegram user id
+  tgUsername: { type: String },
+  photoUrl: { type: String },
   role: { type: String, enum: ['user','admin'], default: 'user' },
   createdAt: { type: Date, default: Date.now },
   battlePoints: { type: Number, default: 0 },

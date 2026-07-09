@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLang, T } from '@/lib/lang';
@@ -59,6 +59,41 @@ function LoginForm() {
     } catch { setError('Server xatosi'); }
     finally { setLoading(false); }
   }
+
+  // ── Telegram Login Widget ──
+  const tgRef = useRef(null);
+  const tgHandler = useRef(() => {});
+  async function handleTelegram(tgUser) {
+    setError(''); setPending(false); setLoading(true);
+    try {
+      const res = await fetch('/api/auth/telegram', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tgUser),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.message || 'Telegram xatosi'); return; }
+      if (data.pending) { setPending(true); return; }
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      router.push('/mavzular');
+    } catch { setError('Server xatosi'); }
+    finally { setLoading(false); }
+  }
+  tgHandler.current = handleTelegram;
+
+  useEffect(() => {
+    window.onTelegramAuth = (user) => tgHandler.current(user);
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+    if (!botUsername || !tgRef.current || tgRef.current.querySelector('script')) return;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://telegram.org/js/telegram-widget.js?22';
+    s.setAttribute('data-telegram-login', botUsername);
+    s.setAttribute('data-size', 'large');
+    s.setAttribute('data-radius', '8');
+    s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    s.setAttribute('data-request-access', 'write');
+    tgRef.current.appendChild(s);
+  }, []);
 
   const strengthColor = ['#E2E8F0', '#DC2626', '#F59E0B', '#F59E0B', '#16A34A', '#16A34A'];
   const strengthLabel = ['', 'Juda zaif', 'Zaif', "O'rtacha", 'Yaxshi', 'Kuchli'];
@@ -160,6 +195,14 @@ function LoginForm() {
                 {loading ? t.loading : (tab === 'login' ? t.login_tab : t.reg_tab)}
               </button>
             </form>
+
+            {/* Telegram orqali kirish */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: '1.25rem 0' }}>
+              <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+              <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>yoki</span>
+              <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
+            </div>
+            <div ref={tgRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 46 }} />
           </>
         )}
 
