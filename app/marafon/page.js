@@ -7,6 +7,8 @@ import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
+import QuestionImage from '@/components/QuestionImage';
+import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const START_COUNT = 3;
@@ -94,6 +96,10 @@ export default function MarafonPage() {
   }
 
   // ── MENU ──
+  useEffect(() => {
+    preloadImages([queue[qIdx + 1]?.image_url, pool[poolIdx]?.image_url]);
+  }, [qIdx, queue, poolIdx, pool]);
+
   if (guard === 'loading') return null;
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
@@ -233,10 +239,7 @@ export default function MarafonPage() {
 
         {/* Question card */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-          {q.image_url && (
-            <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'contain', background: 'var(--bg)', display: 'block' }}
-              onError={e => e.target.style.display = 'none'} />
-          )}
+          {q.image_url && <QuestionImage src={q.image_url} maxHeight={280} />}
           <div style={{ padding: '1.25rem' }}>
             <p style={{ fontSize: '0.975rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1.1rem' }}>
               {q.text[lang] || q.text.uz}

@@ -9,6 +9,8 @@ import { useQuestionNav } from '@/lib/useQuestionNav';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { canAccessTopic } from '@/lib/access';
+import QuestionImage from '@/components/QuestionImage';
+import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1','F2','F3','F4','F5'];
 
@@ -113,6 +115,11 @@ export default function TopicTestPage() {
     prev: () => { if (idx > 0) goTo(idx - 1); },
     enabled: !done && questions.length > 0,
   });
+
+  // Keyingi 2 savol rasmini oldindan yuklaymiz
+  useEffect(() => {
+    preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
+  }, [idx, questions]);
 
   function saveResult() {
     const total = questions.length;
@@ -243,9 +250,7 @@ export default function TopicTestPage() {
         {/* Question card */}
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
           {q.image_url && (
-            <img src={q.image_url} alt="" onClick={() => setLightbox(q.image_url)}
-              style={{width:'100%',maxHeight:260,objectFit:'contain',background:'var(--bg)',display:'block',cursor:'zoom-in'}}
-              onError={e=>e.target.style.display='none'} />
+            <QuestionImage src={q.image_url} maxHeight={260} onClick={() => setLightbox(q.image_url)} />
           )}
 
           <div style={{padding:'1.25rem'}}>

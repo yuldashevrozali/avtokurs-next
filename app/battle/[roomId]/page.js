@@ -8,6 +8,8 @@ import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
+import QuestionImage from '@/components/QuestionImage';
+import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣'];
@@ -246,6 +248,10 @@ export default function BattleRoomPage() {
   const allAnswered = answeredCount >= totalQ;
 
   // ── LOADING ──
+  useEffect(() => {
+    preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
+  }, [idx, questions]);
+
   if (guard === 'loading') return null;
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
@@ -470,7 +476,7 @@ export default function BattleRoomPage() {
 
           {/* Question card */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
-            {q.image_url && <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />}
+            {q.image_url && <QuestionImage src={q.image_url} maxHeight={260} />}
             <div style={{ padding: '1.25rem' }}>
               <p style={{ fontSize: '0.975rem', fontWeight: 500, lineHeight: 1.55, color: 'var(--text)', margin: '0 0 1rem' }}>
                 {q.text[lang] || q.text.uz}

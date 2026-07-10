@@ -9,6 +9,8 @@ import { useQuestionNav } from '@/lib/useQuestionNav';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { canAccessTicket } from '@/lib/access';
+import QuestionImage from '@/components/QuestionImage';
+import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -91,6 +93,10 @@ export default function BiletTestPage() {
     prev: () => { if (idx > 0) { setIdx(idx - 1); setSelected(answers[idx - 1]?.selected ?? null); } },
     enabled: !done && questions.length > 0,
   });
+
+  useEffect(() => {
+    preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
+  }, [idx, questions]);
 
   function restart() {
     setIdx(0);
@@ -191,10 +197,7 @@ export default function BiletTestPage() {
         </div>
 
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
-          {q.image_url && (
-            <img src={q.image_url} alt="" style={{width:'100%',maxHeight:280,objectFit:'contain',background:'var(--bg)',display:'block'}}
-              onError={e=>e.target.style.display='none'} />
-          )}
+          {q.image_url && <QuestionImage src={q.image_url} maxHeight={280} />}
           <div style={{padding:'1.25rem'}}>
             {/* Question text + save button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>

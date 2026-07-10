@@ -8,6 +8,8 @@ import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
+import QuestionImage from '@/components/QuestionImage';
+import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -76,6 +78,10 @@ export default function SavedPage() {
     setQIdx(0); setSelected(null); setCorrect(0); setDone(false);
   }
 
+  useEffect(() => {
+    preloadImages([testQueue[qIdx + 1]?.image_url, testQueue[qIdx + 2]?.image_url]);
+  }, [qIdx, testQueue]);
+
   if (guard === 'loading') return null;
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
@@ -114,9 +120,7 @@ export default function SavedPage() {
                 const correctIdx = q.variants.findIndex(v => v.is_correct);
                 return (
                   <div key={q.id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                    {q.image_url && (
-                      <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 180, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-                    )}
+                    {q.image_url && <QuestionImage src={q.image_url} maxHeight={180} />}
                     <div style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '0.875rem' }}>
                         <span style={{ minWidth: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, flexShrink: 0 }}>{i + 1}</span>
@@ -192,9 +196,7 @@ export default function SavedPage() {
         </div>
 
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-          {q.image_url && (
-            <img src={q.image_url} alt="" style={{ width: '100%', maxHeight: 260, objectFit: 'contain', background: 'var(--bg)', display: 'block' }} onError={e => e.target.style.display = 'none'} />
-          )}
+          {q.image_url && <QuestionImage src={q.image_url} maxHeight={260} />}
           <div style={{ padding: '1.25rem' }}>
             <p style={{ fontSize: '0.975rem', fontWeight: 500, lineHeight: 1.5, color: 'var(--text)', margin: '0 0 1.1rem' }}>{q.text[lang] || q.text.uz}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
