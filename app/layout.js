@@ -3,6 +3,7 @@ import LangProvider from '@/components/LangProvider';
 import MobileNav from '@/components/MobileNav';
 import Footer from '@/components/Footer';
 import TvMode from '@/components/TvMode';
+import PremiumCongrats from '@/components/PremiumCongrats';
 export const metadata = {
   title: "Avtoqoida — Haydovchilik imtihoniga onlayn tayyorlanish",
   description: "Haydovchilik guvohnomasi olish uchun onlayn test ishlang. Yo'l harakati qoidalari bo'yicha 1200+ savol, biletlar, imtihon simulatsiyasi. Bepul tayyorlaning!",
@@ -39,6 +40,7 @@ export default function RootLayout({ children }) {
           <Footer />
           <MobileNav />
           <TvMode />
+          <PremiumCongrats />
         </LangProvider>
       </body>
     </html>

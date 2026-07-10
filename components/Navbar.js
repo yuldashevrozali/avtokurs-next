@@ -51,6 +51,11 @@ export default function Navbar() {
         const data = await res.json().catch(() => null);
         if (data?.user) {
           const merged = { ...JSON.parse(localStorage.getItem('user') || '{}'), ...data.user };
+          if (data.user.premiumCongrats) {
+            merged.premiumCongrats = false; // faqat 1 marta ko'rsatiladi
+            fetch('/api/premium/ack', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+            window.dispatchEvent(new Event('premium-congrats'));
+          }
           localStorage.setItem('user', JSON.stringify(merged));
           setUser(merged);
         }

@@ -10,8 +10,17 @@ export async function PUT(req, { params }) {
   await connectDB();
   try {
     const { isPremium } = await req.json();
+    const target = await User.findById(params.id);
+    if (!target) return NextResponse.json({ message: 'Topilmadi' }, { status: 404 });
+
+    const willGrant = !!isPremium && !target.isPremium; // yangi premium bo'lyaptimi
     const update = { isPremium: !!isPremium };
-    if (isPremium) update.premiumRequested = false; // premium bergach so'rovni tozalaymiz
+    if (isPremium) {
+      update.premiumRequested = false;            // so'rovni tozalaymiz
+      if (willGrant) update.premiumCongrats = true; // tabrik ko'rsatiladi (1 marta)
+    } else {
+      update.premiumCongrats = false;
+    }
     const user = await User.findByIdAndUpdate(params.id, update, { new: true }).select('-password');
     return NextResponse.json(user);
   } catch { return NextResponse.json({ message: 'Server xatosi' }, { status: 500 }); }

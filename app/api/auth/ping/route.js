@@ -12,7 +12,7 @@ export async function GET(req) {
   const user = await User.findOneAndUpdate(
     { _id: decoded.id, sessionId: decoded.sessionId },
     { 'activeDevice.lastSeenAt': new Date() },
-    { new: true, select: 'name role isPremium premiumRequested' }
+    { new: true, select: 'name role isPremium premiumRequested premiumCongrats' }
   );
 
   if (!user) {
@@ -20,6 +20,6 @@ export async function GET(req) {
   }
   return NextResponse.json({
     ok: true,
-    user: { id: user._id, name: user.name, role: user.role, isPremium: user.isPremium, premiumRequested: user.premiumRequested },
+    user: { id: user._id, name: user.name, role: user.role, isPremium: user.isPremium, premiumRequested: user.premiumRequested, premiumCongrats: user.premiumCongrats },
   });
 }

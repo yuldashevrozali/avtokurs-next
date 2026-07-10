@@ -11,6 +11,7 @@ const s = new mongoose.Schema({
   isPremium: { type: Boolean, default: false }, // premium (barcha bo'limlar)
   premiumRequested: { type: Boolean, default: false }, // premium so'rov yuborganmi
   premiumRequestedAt: { type: Date },
+  premiumCongrats: { type: Boolean, default: false }, // premium bo'lgani haqida tabrik ko'rsatilishi kerakmi (1 marta)
   createdAt: { type: Date, default: Date.now },
   battlePoints: { type: Number, default: 0 },
   status: { type: String, enum: ['pending', 'active'] }, // undefined = mavjud (faol) userlar
