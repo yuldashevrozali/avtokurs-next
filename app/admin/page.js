@@ -138,6 +138,11 @@ export default function AdminPage() {
     loadUsers();
   }
 
+  async function togglePremium(u) {
+    await apiFetch(`/users/${u._id}/premium`, { method: 'PUT', body: JSON.stringify({ isPremium: !u.isPremium }) });
+    loadUsers();
+  }
+
   async function deleteUser(id) {
     if (!confirm("Foydalanuvchini o'chirasizmi?")) return;
     await apiFetch(`/users/${id}`, { method: 'DELETE' });
@@ -307,7 +312,7 @@ export default function AdminPage() {
             <table style={{width:'100%',borderCollapse:'collapse',minWidth:700}}>
               <thead>
                 <tr style={{background:'#F8FAFC',borderBottom:'1px solid #E2E8F0'}}>
-                  {['Ism','Email','Rol','Tasdiqlangan','Holat','Qurilma','Amal'].map(h=>(
+                  {['Ism','Telefon','Rol','Premium','Holat','Qurilma','Amal'].map(h=>(
                     <th key={h} style={{padding:'0.75rem 1rem',textAlign:'left',fontSize:'0.8rem',color:'#64748B',fontWeight:600,whiteSpace:'nowrap'}}>{h}</th>
                   ))}
                 </tr>
@@ -321,7 +326,7 @@ export default function AdminPage() {
                   return (
                     <tr key={u._id} style={{borderBottom:'1px solid #E2E8F0'}}>
                       <td style={{padding:'0.75rem 1rem',fontSize:'0.9rem',fontWeight:500}}>{u.name}</td>
-                      <td style={{padding:'0.75rem 1rem',fontSize:'0.85rem',color:'#64748B'}}>{u.email}</td>
+                      <td style={{padding:'0.75rem 1rem',fontSize:'0.85rem',color:'#64748B',whiteSpace:'nowrap'}}>{u.phone || (u.telegramId ? `TG @${u.tgUsername||u.telegramId}` : u.email)}</td>
                       <td style={{padding:'0.75rem 1rem'}}>
                         <select value={u.role} onChange={e=>changeRole(u._id,e.target.value)}
                           style={{padding:'0.3rem 0.5rem',border:'1px solid #E2E8F0',borderRadius:4,fontSize:'0.85rem',background:u.role==='admin'?'#DBEAFE':'#F1F5F9'}}>
@@ -330,11 +335,16 @@ export default function AdminPage() {
                         </select>
                       </td>
                       <td style={{padding:'0.75rem 1rem'}}>
-                        {u.status === 'pending' ? (
-                          <span style={{fontSize:'0.78rem',background:'#FEF9C3',color:'#713F12',padding:'0.2rem 0.6rem',borderRadius:99,fontWeight:600,whiteSpace:'nowrap'}}>⏳ Kutmoqda</span>
-                        ) : (
-                          <span style={{fontSize:'0.78rem',background:'#DCFCE7',color:'#166534',padding:'0.2rem 0.6rem',borderRadius:99,fontWeight:600}}>✓ Faol</span>
-                        )}
+                        <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                          <button onClick={()=>togglePremium(u)}
+                            style={{padding:'0.3rem 0.7rem',borderRadius:99,border:'none',cursor:'pointer',fontSize:'0.78rem',fontWeight:700,whiteSpace:'nowrap',
+                              background:u.isPremium?'#DCFCE7':'#F1F5F9',color:u.isPremium?'#166534':'#64748B'}}>
+                            {u.isPremium ? '⭐ Premium' : 'Bepul'}
+                          </button>
+                          {!u.isPremium && u.premiumRequested && (
+                            <span style={{fontSize:'0.72rem',background:'#FEF3C7',color:'#92400E',padding:'0.15rem 0.5rem',borderRadius:99,fontWeight:600,whiteSpace:'nowrap'}}>📩 so'rov</span>
+                          )}
+                        </div>
                       </td>
                       <td style={{padding:'0.75rem 1rem'}}>
                         {d ? (

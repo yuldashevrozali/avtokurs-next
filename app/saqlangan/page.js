@@ -5,11 +5,15 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
 export default function SavedPage() {
   const router = useRouter();
+  const guard = useGuard(isPremiumUser);
   const [questions, setQuestions] = useState([]);   // asl ro'yxat (list uchun)
   const [testQueue, setTestQueue] = useState([]);   // shuffled (test uchun)
   const [loading, setLoading] = useState(true);
@@ -71,6 +75,9 @@ export default function SavedPage() {
     setTestQueue(shuffled);
     setQIdx(0); setSelected(null); setCorrect(0); setDone(false);
   }
+
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   if (loading) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
 

@@ -46,6 +46,13 @@ export default function Navbar() {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           router.push('/login?reason=kicked');
+          return;
+        }
+        const data = await res.json().catch(() => null);
+        if (data?.user) {
+          const merged = { ...JSON.parse(localStorage.getItem('user') || '{}'), ...data.user };
+          localStorage.setItem('user', JSON.stringify(merged));
+          setUser(merged);
         }
       } catch {}
     };
@@ -89,7 +96,11 @@ export default function Navbar() {
 
   return (
     <nav>
-      <Link className="nav-logo" href="/" onClick={close}>Avtotest</Link>
+      <Link className="nav-logo" href="/" onClick={close} style={{display:'inline-flex',alignItems:'center',gap:'0.5rem'}}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-icon.svg" alt="" width={28} height={28} style={{display:'block'}} />
+        avtoqoida.uz
+      </Link>
 
       {/* Nav links — row on desktop, dropdown on mobile */}
       <div className={`nav-links${menuOpen ? ' nav-open' : ''}`}>

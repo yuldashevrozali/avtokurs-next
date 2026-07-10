@@ -4,9 +4,13 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 export default function LessonPage() {
   const { moduleId } = useParams();
+  const guard = useGuard(isPremiumUser);
   const router = useRouter();
   const [lessons, setLessons] = useState([]);
   const [current, setCurrent] = useState(null);
@@ -181,6 +185,9 @@ export default function LessonPage() {
   const isLastLesson = currentIdx === lessons.length - 1;
   const currentDone = current ? isLessonDone(current, progressMap, videoEnded) : false;
   const cardStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '1.25rem', marginTop: '1.25rem' };
+
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   return (
     <>

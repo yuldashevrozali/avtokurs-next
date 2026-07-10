@@ -11,7 +11,7 @@ export default function Footer() {
     }}>
       <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem 1.5rem' }}>
         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          © {new Date().getFullYear()} Avtotest
+          © {new Date().getFullYear()} Avtoqoida
         </span>
         <Link href="/privacy-policy"
           style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textDecoration: 'none' }}

@@ -6,11 +6,15 @@ import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import { useQuestionNav } from '@/lib/useQuestionNav';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
 export default function XatolarPage() {
   const router = useRouter();
+  const guard = useGuard(isPremiumUser);
   const [phase, setPhase] = useState('loading'); // loading | empty | playing | done
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -87,6 +91,9 @@ export default function XatolarPage() {
   const total = questions.length;
 
   // ── LOADING ──
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
+
   if (phase === 'loading') {
     return <><Navbar /><div className="container" style={{ textAlign: 'center', paddingTop: '4rem' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
   }

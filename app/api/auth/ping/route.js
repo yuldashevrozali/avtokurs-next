@@ -12,11 +12,14 @@ export async function GET(req) {
   const user = await User.findOneAndUpdate(
     { _id: decoded.id, sessionId: decoded.sessionId },
     { 'activeDevice.lastSeenAt': new Date() },
-    { select: '_id' }
+    { new: true, select: 'name role isPremium premiumRequested' }
   );
 
   if (!user) {
     return NextResponse.json({ message: 'Boshqa qurilmadan kirildi' }, { status: 401 });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    user: { id: user._id, name: user.name, role: user.role, isPremium: user.isPremium, premiumRequested: user.premiumRequested },
+  });
 }

@@ -44,9 +44,7 @@ export async function POST(req) {
         tgUsername: body.username,
         photoUrl: body.photo_url,
         email: `tg${tgId}@telegram.local`,
-        // Yangi Telegram foydalanuvchi admin tasdig'ini kutadi.
-        // Tasdiqsiz darhol kirsin desangiz: 'pending' -> 'active'
-        status: 'pending',
+        status: 'active',
       });
     } else {
       user.name = name;
@@ -54,9 +52,6 @@ export async function POST(req) {
       user.photoUrl = body.photo_url;
       await user.save();
     }
-
-    if (user.status === 'pending')
-      return NextResponse.json({ pending: true, message: "Hisobingiz yaratildi! Admin tasdiqlashini kuting." });
 
     const sessionId = randomUUID();
     const userAgent = req.headers.get('user-agent') || "Noma'lum";
@@ -74,7 +69,7 @@ export async function POST(req) {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    const response = NextResponse.json({ token: jwtToken, user: { id: user._id, name: user.name, role: user.role } });
+    const response = NextResponse.json({ token: jwtToken, user: { id: user._id, name: user.name, role: user.role, isPremium: user.isPremium, premiumRequested: user.premiumRequested } });
     response.cookies.set('avtokurs_token', jwtToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

@@ -2,7 +2,7 @@ import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
 export const metadata = {
-  title: "Maxfiylik siyosati — Avtotest",
+  title: "Maxfiylik siyosati — Avtoqoida",
   description: "avtoqoida sayti foydalanuvchilar ma'lumotlari va maxfiylik siyosati haqida ma'lumot.",
 };
 

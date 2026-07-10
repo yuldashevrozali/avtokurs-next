@@ -5,6 +5,9 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const MEDALS = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','1️⃣1️⃣','1️⃣2️⃣','1️⃣3️⃣','1️⃣4️⃣','1️⃣5️⃣','1️⃣6️⃣'];
@@ -12,6 +15,7 @@ const BATTLE_TIME = 30 * 60;
 
 export default function BattleRoomPage() {
   const { roomId } = useParams();
+  const guard = useGuard(isPremiumUser);
   const router = useRouter();
   const { lang } = useLang();
   const t = T[lang];
@@ -242,6 +246,9 @@ export default function BattleRoomPage() {
   const allAnswered = answeredCount >= totalQ;
 
   // ── LOADING ──
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
+
   if (phase === 'loading') return (
     <><Navbar /><div className="container" style={{ paddingTop: '4rem', textAlign: 'center' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>
   );

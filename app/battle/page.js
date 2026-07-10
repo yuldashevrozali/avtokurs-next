@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 // phases:
 // menu
@@ -12,6 +15,7 @@ import { useLang, T } from '@/lib/lang';
 
 export default function BattlePage() {
   const router = useRouter();
+  const guard = useGuard(isPremiumUser);
   const [phase, setPhase] = useState('menu');
   const [friendPlayers, setFriendPlayers] = useState(2);
   const [randomPlayers, setRandomPlayers] = useState(2);
@@ -111,6 +115,9 @@ export default function BattlePage() {
     : friendSource.name?.[lang] || friendSource.name?.uz || '';
 
   const medal = ['🥇', '🥈', '🥉'];
+
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   return (
     <>

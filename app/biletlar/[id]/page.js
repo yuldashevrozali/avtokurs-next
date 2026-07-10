@@ -6,11 +6,15 @@ import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import { useQuestionNav } from '@/lib/useQuestionNav';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { canAccessTicket } from '@/lib/access';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
 export default function BiletTestPage() {
   const { id } = useParams();
+  const guard = useGuard(u => canAccessTicket(u, id));
   const router = useRouter();
   const [questions, setQuestions] = useState([]);
   const [ticket, setTicket] = useState(null);
@@ -94,6 +98,9 @@ export default function BiletTestPage() {
     setSelected(null);
     setDone(false);
   }
+
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
 

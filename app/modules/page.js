@@ -4,6 +4,9 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 function extractYoutubeId(input) {
   const patterns = [
@@ -19,6 +22,7 @@ function extractYoutubeId(input) {
 }
 
 export default function ModulesPage() {
+  const guard = useGuard(isPremiumUser);
   const [modules, setModules] = useState([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -100,6 +104,9 @@ export default function ModulesPage() {
     const ls = await apiFetch(`/lessons/module/${moduleId}`);
     setLessons(prev => ({ ...prev, [moduleId]: ls }));
   }
+
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>Yuklanmoqda...</p></div></>;
 

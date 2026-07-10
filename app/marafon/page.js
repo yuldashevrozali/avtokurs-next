@@ -4,12 +4,16 @@ import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
+import PremiumGate from '@/components/PremiumGate';
+import { useGuard } from '@/lib/usePremiumGuard';
+import { isPremiumUser } from '@/lib/access';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const START_COUNT = 3;
 
 export default function MarafonPage() {
   const router = useRouter();
+  const guard = useGuard(isPremiumUser);
   const [phase, setPhase] = useState('menu'); // menu | loading | playing | done
   const [pool, setPool] = useState([]);
   const [queue, setQueue] = useState([]);
@@ -90,6 +94,9 @@ export default function MarafonPage() {
   }
 
   // ── MENU ──
+  if (guard === 'loading') return null;
+  if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
+
   if (phase === 'menu') {
     return (
       <>

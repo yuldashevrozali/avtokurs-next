@@ -4,7 +4,7 @@ import MobileNav from '@/components/MobileNav';
 import Footer from '@/components/Footer';
 import TvMode from '@/components/TvMode';
 export const metadata = {
-  title: "Avtotest — Haydovchilik imtihoniga onlayn tayyorlanish",
+  title: "Avtoqoida — Haydovchilik imtihoniga onlayn tayyorlanish",
   description: "Haydovchilik guvohnomasi olish uchun onlayn test ishlang. Yo'l harakati qoidalari bo'yicha 1200+ savol, biletlar, imtihon simulatsiyasi. Bepul tayyorlaning!",
   keywords: [
     "avtoqoida", "avtoqoida uz", "avtotest", "avto test",
@@ -19,7 +19,7 @@ export const metadata = {
     "haydovchilik maktabi", "avtomaktab",
   ].join(", "),
   openGraph: {
-    title: "Avtotest — Haydovchilik imtihoniga onlayn tayyorlanish",
+    title: "Avtoqoida — Haydovchilik imtihoniga onlayn tayyorlanish",
     description: "1200+ savol, biletlar va imtihon simulatsiyasi bilan haydovchilik guvohnomangizni oling!",
     type: "website",
     locale: "uz_UZ",
