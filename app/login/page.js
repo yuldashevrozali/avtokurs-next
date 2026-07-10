@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useLang, T } from '@/lib/lang';
@@ -60,9 +60,8 @@ function LoginForm() {
     finally { setLoading(false); }
   }
 
-  // ── Telegram Login Widget ──
-  const tgRef = useRef(null);
-  const tgHandler = useRef(() => {});
+  // ── Telegram orqali kirish (o'zimizning tugma) ──
+  const [tgReady, setTgReady] = useState(false);
   async function handleTelegram(tgUser) {
     setError(''); setPending(false); setLoading(true);
     try {
@@ -78,22 +77,31 @@ function LoginForm() {
     } catch { setError('Server xatosi'); }
     finally { setLoading(false); }
   }
-  tgHandler.current = handleTelegram;
 
+  // Telegram widget kutubxonasini yuklaymiz (Telegram.Login.auth uchun)
   useEffect(() => {
-    window.onTelegramAuth = (user) => tgHandler.current(user);
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
-    if (!botUsername || !tgRef.current || tgRef.current.querySelector('script')) return;
+    if (window.Telegram?.Login) { setTgReady(true); return; }
+    const existing = document.getElementById('tg-widget-js');
+    if (existing) { existing.addEventListener('load', () => setTgReady(true)); return; }
     const s = document.createElement('script');
-    s.async = true;
+    s.id = 'tg-widget-js';
     s.src = 'https://telegram.org/js/telegram-widget.js?22';
-    s.setAttribute('data-telegram-login', botUsername);
-    s.setAttribute('data-size', 'large');
-    s.setAttribute('data-radius', '8');
-    s.setAttribute('data-onauth', 'onTelegramAuth(user)');
-    s.setAttribute('data-request-access', 'write');
-    tgRef.current.appendChild(s);
+    s.async = true;
+    s.onload = () => setTgReady(true);
+    document.body.appendChild(s);
   }, []);
+
+  function loginWithTelegram() {
+    const botId = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID;
+    if (!window.Telegram?.Login || !botId) {
+      setError("Telegram hali yuklanmadi, birozdan so'ng urinib ko'ring");
+      return;
+    }
+    window.Telegram.Login.auth({ bot_id: botId, request_access: 'write' }, (data) => {
+      if (!data) return; // foydalanuvchi bekor qildi
+      handleTelegram(data);
+    });
+  }
 
   const strengthColor = ['#E2E8F0', '#DC2626', '#F59E0B', '#F59E0B', '#16A34A', '#16A34A'];
   const strengthLabel = ['', 'Juda zaif', 'Zaif', "O'rtacha", 'Yaxshi', 'Kuchli'];
@@ -202,7 +210,21 @@ function LoginForm() {
               <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>yoki</span>
               <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
             </div>
-            <div ref={tgRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 46 }} />
+            <button type="button" onClick={loginWithTelegram} disabled={loading}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                padding: '0.7rem', borderRadius: 8, border: 'none', cursor: loading ? 'default' : 'pointer',
+                background: 'linear-gradient(180deg,#2AABEE 0%,#229ED9 100%)', color: 'white',
+                fontWeight: 600, fontSize: '0.95rem', boxShadow: '0 2px 8px rgba(34,158,217,0.35)',
+                opacity: loading ? 0.6 : 1, transition: 'filter 0.15s',
+              }}
+              onMouseOver={e => (e.currentTarget.style.filter = 'brightness(1.05)')}
+              onMouseOut={e => (e.currentTarget.style.filter = 'none')}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71l-4.13-3.05-1.98 1.93c-.23.23-.42.42-.85.42z" />
+              </svg>
+              Telegram orqali kirish
+            </button>
           </>
         )}
 
