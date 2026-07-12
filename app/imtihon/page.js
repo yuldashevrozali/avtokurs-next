@@ -14,7 +14,7 @@ import { preloadImages } from '@/lib/preload';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const TOTAL = 20;
-const EXAM_TIME = 20 * 60;
+const EXAM_TIME = 25 * 60;
 const MAX_ERRORS = 3;
 const PASS_COUNT = 17;
 
@@ -30,6 +30,7 @@ export default function ImtihonPage() {
   const [errorCount, setErrorCount] = useState(0);
   const [failed, setFailed] = useState(false);
   const [savedIds, setSavedIds] = useState(new Set());
+  const [lightbox, setLightbox] = useState(null);
   const timerRef = useRef(null);
   const failRef = useRef(null);
   const { lang } = useLang();
@@ -104,8 +105,16 @@ export default function ImtihonPage() {
     // Oxirgi savolda gesture imtihonni yakunlamaydi
     next: () => { if (idx + 1 < questions.length) next(); },
     prev: () => { if (idx > 0) goTo(idx - 1); },
-    enabled: phase === 'playing',
+    enabled: phase === 'playing' && !lightbox,
   });
+
+  // Lightbox ochiq bo'lsa Escape bilan yopiladi
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = e => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox]);
 
   useEffect(() => {
     preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
@@ -237,6 +246,20 @@ export default function ImtihonPage() {
   return (
     <>
       <Navbar />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+          <button onClick={() => setLightbox(null)}
+            style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', fontSize: '1.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}>
+            ✕
+          </button>
+          <img src={lightbox} alt="" onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: 8, cursor: 'default', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }} />
+        </div>
+      )}
+
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '1rem 1rem' }}>
 
         {/* Top bar */}
@@ -274,7 +297,7 @@ export default function ImtihonPage() {
         {/* Question card */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           {q.image_url && (
-            <QuestionImage src={q.image_url} maxHeight={280} />
+            <QuestionImage src={q.image_url} maxHeight={280} onClick={() => setLightbox(q.image_url)} />
           )}
           <div style={{ padding: '1.25rem' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', marginBottom: '1.1rem' }}>

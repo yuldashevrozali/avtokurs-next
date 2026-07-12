@@ -9,6 +9,7 @@ import { useQuestionNav } from '@/lib/useQuestionNav';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { canAccessTicket } from '@/lib/access';
+import { isComingSoon } from '@/lib/comingSoon';
 import QuestionImage from '@/components/QuestionImage';
 import { preloadImages } from '@/lib/preload';
 
@@ -30,7 +31,10 @@ export default function BiletTestPage() {
   const { lang } = useLang();
   const t = T[lang];
 
+  const soon = isComingSoon(id);
+
   useEffect(() => {
+    if (soon) { setLoading(false); return; }
     const raw = localStorage.getItem('user');
     if (!raw) { router.push('/login'); return; }
     setUserId(JSON.parse(raw).id);
@@ -103,6 +107,20 @@ export default function BiletTestPage() {
     setAnswers({});
     setSelected(null);
     setDone(false);
+  }
+
+  if (soon) {
+    return (
+      <>
+        <Navbar />
+        <div style={{maxWidth:520,margin:'3rem auto',padding:'1rem',textAlign:'center'}}>
+          <div style={{fontSize:'3.5rem',marginBottom:'0.75rem'}}>⏳</div>
+          <h1 style={{fontSize:'1.5rem',fontWeight:700,color:'var(--text)',marginBottom:'0.5rem'}}>{t.coming_soon}</h1>
+          <p style={{color:'var(--text-muted)',marginBottom:'1.5rem'}}>{t.coming_soon_sub}</p>
+          <Link href="/biletlar" className="btn btn-primary">{t.back_tickets}</Link>
+        </div>
+      </>
+    );
   }
 
   if (guard === 'loading') return null;
