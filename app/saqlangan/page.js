@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
@@ -85,7 +86,7 @@ export default function SavedPage() {
   if (guard === 'loading') return null;
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
-  if (loading) return <><Navbar /><div className="container"><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
+  if (loading) return <><Navbar /><Loading label={t.loading} /></>;
 
   // ── LIST MODE ──
   if (mode === 'list') {

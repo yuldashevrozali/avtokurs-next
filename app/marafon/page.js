@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
@@ -151,9 +152,7 @@ export default function MarafonPage() {
   // ── LOADING ──
   if (phase === 'loading') {
     return (
-      <><Navbar /><div className="container" style={{ textAlign: 'center', paddingTop: '4rem' }}>
-        <p style={{ color: 'var(--text-muted)' }}>{t.loading}</p>
-      </div></>
+      <><Navbar /><Loading label={t.loading} /></>
     );
   }
 

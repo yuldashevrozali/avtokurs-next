@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import { useQuestionNav } from '@/lib/useQuestionNav';
@@ -28,6 +29,8 @@ export default function BiletTestPage() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState('');
   const [savedIds, setSavedIds] = useState(new Set());
+  const [lightbox, setLightbox] = useState(null);
+  const autoRef = useRef(null);
   const { lang } = useLang();
   const t = T[lang];
 
@@ -71,9 +74,20 @@ export default function BiletTestPage() {
     const isCorrect = i === correctIdx;
     setSelected(i);
     setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect } }));
+    if (isCorrect) {
+      // To'g'ri javob — avtomatik keyingi savolga o'tamiz (mavzulardagi kabi)
+      const currentIdx = idx;
+      clearTimeout(autoRef.current);
+      autoRef.current = setTimeout(() => {
+        if (currentIdx + 1 >= questions.length) return; // oxirgi savol — foydalanuvchi "Yakunlash"ni bossin
+        setIdx(currentIdx + 1);
+        setSelected(null);
+      }, 600);
+    }
   }
 
   function next() {
+    clearTimeout(autoRef.current);
     if (idx + 1 >= questions.length) {
       finishExam();
     } else {
@@ -93,10 +107,21 @@ export default function BiletTestPage() {
 
   useQuestionNav({
     // Oxirgi savolda gesture testni yakunlamaydi — faqat "Yakunlash" tugmasi yakunlaydi
-    next: () => { if (idx + 1 < questions.length) { setIdx(idx + 1); setSelected(answers[idx + 1]?.selected ?? null); } },
-    prev: () => { if (idx > 0) { setIdx(idx - 1); setSelected(answers[idx - 1]?.selected ?? null); } },
-    enabled: !done && questions.length > 0,
+    next: () => { if (idx + 1 < questions.length) { clearTimeout(autoRef.current); setIdx(idx + 1); setSelected(answers[idx + 1]?.selected ?? null); } },
+    prev: () => { if (idx > 0) { clearTimeout(autoRef.current); setIdx(idx - 1); setSelected(answers[idx - 1]?.selected ?? null); } },
+    enabled: !done && questions.length > 0 && !lightbox,
   });
+
+  // Lightbox ochiq bo'lsa Escape bilan yopiladi
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = e => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox]);
+
+  // Komponent yopilganda avtomatik o'tish taymerini tozalaymiz
+  useEffect(() => () => clearTimeout(autoRef.current), []);
 
   useEffect(() => {
     preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
@@ -126,7 +151,7 @@ export default function BiletTestPage() {
   if (guard === 'loading') return null;
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
+  if (loading) return <><Navbar /><Loading label={t.loading} /></>;
 
   if (done) {
     const total = questions.length;
@@ -183,6 +208,20 @@ export default function BiletTestPage() {
   return (
     <>
       <Navbar />
+
+      {/* Lightbox — rasmni kattalashtirish */}
+      {lightbox && (
+        <div onClick={() => setLightbox(null)}
+          style={{position:'fixed',inset:0,zIndex:1000,background:'rgba(0,0,0,0.85)',display:'flex',alignItems:'center',justifyContent:'center',padding:'1rem',cursor:'zoom-out'}}>
+          <button onClick={() => setLightbox(null)}
+            style={{position:'absolute',top:16,right:16,width:40,height:40,borderRadius:'50%',background:'rgba(255,255,255,0.15)',border:'none',color:'white',fontSize:'1.4rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}>
+            ✕
+          </button>
+          <img src={lightbox} alt="" onClick={e => e.stopPropagation()}
+            style={{maxWidth:'100%',maxHeight:'90vh',objectFit:'contain',borderRadius:8,cursor:'default',boxShadow:'0 8px 40px rgba(0,0,0,0.5)'}} />
+        </div>
+      )}
+
       <div style={{maxWidth:760,margin:'0 auto',padding:'1.5rem 1rem'}}>
 
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1rem',gap:'0.5rem',flexWrap:'wrap'}}>
@@ -202,7 +241,7 @@ export default function BiletTestPage() {
             const a = answers[i];
             const isCurr = i === idx;
             return (
-              <div key={i} onClick={() => { setIdx(i); setSelected(answers[i]?.selected ?? null); }}
+              <div key={i} onClick={() => { clearTimeout(autoRef.current); setIdx(i); setSelected(answers[i]?.selected ?? null); }}
                 style={{width:24,height:24,borderRadius:4,display:'flex',alignItems:'center',justifyContent:'center',
                   fontSize:'0.7rem',fontWeight:600,cursor:'pointer',
                   background: a ? (a.isCorrect ? '#DCFCE7' : '#FEE2E2') : isCurr ? 'var(--primary)' : 'var(--border)',
@@ -215,7 +254,7 @@ export default function BiletTestPage() {
         </div>
 
         <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,overflow:'hidden'}}>
-          {q.image_url && <QuestionImage src={q.image_url} maxHeight={280} />}
+          {q.image_url && <QuestionImage src={q.image_url} maxHeight={280} onClick={() => setLightbox(q.image_url)} />}
           <div style={{padding:'1.25rem'}}>
             {/* Question text + save button */}
             <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>

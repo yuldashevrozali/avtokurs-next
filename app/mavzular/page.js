@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { useLang, T } from '@/lib/lang';
 
 export default function MavzularPage() {
@@ -27,7 +28,7 @@ export default function MavzularPage() {
   const doneCnt = topics.filter(tp => { const p = getProgress(tp.id); return p && p.percent >= 80; }).length;
   const filtered = topics.filter(tp => (tp.name[lang] || tp.name.uz).toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
+  if (loading) return <><Navbar /><Loading label={t.loading} /></>;
 
   return (
     <>

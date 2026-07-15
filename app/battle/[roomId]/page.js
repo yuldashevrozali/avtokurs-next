@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import PremiumGate from '@/components/PremiumGate';
@@ -256,7 +257,7 @@ export default function BattleRoomPage() {
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   if (phase === 'loading') return (
-    <><Navbar /><div className="container" style={{ paddingTop: '4rem', textAlign: 'center' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>
+    <><Navbar /><Loading label={t.loading} /></>
   );
 
   // ── ERROR ──

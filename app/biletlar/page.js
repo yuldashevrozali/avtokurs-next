@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { useLang, T } from '@/lib/lang';
 import { COMING_SOON_TICKETS, isComingSoon } from '@/lib/comingSoon';
 
@@ -38,7 +39,7 @@ export default function BiletlarPage() {
     return p && p.percent >= 80;
   }).length;
 
-  if (loading) return <><Navbar /><div className="container"><p style={{color:'var(--text-muted)'}}>{t.loading}</p></div></>;
+  if (loading) return <><Navbar /><Loading label={t.loading} /></>;
 
   return (
     <>

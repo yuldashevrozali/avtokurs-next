@@ -3,6 +3,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
+import Loading from '@/components/Loading';
 import { apiFetch } from '@/lib/api';
 import { useLang, T } from '@/lib/lang';
 import { useQuestionNav } from '@/lib/useQuestionNav';
@@ -101,7 +102,7 @@ export default function XatolarPage() {
   if (guard === 'denied') return (<><Navbar /><PremiumGate /></>);
 
   if (phase === 'loading') {
-    return <><Navbar /><div className="container" style={{ textAlign: 'center', paddingTop: '4rem' }}><p style={{ color: 'var(--text-muted)' }}>{t.loading}</p></div></>;
+    return <><Navbar /><Loading label={t.loading} /></>;
   }
 
   // ── EMPTY ──
