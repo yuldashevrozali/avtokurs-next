@@ -33,6 +33,7 @@ export default function ImtihonPage() {
   const [lightbox, setLightbox] = useState(null);
   const timerRef = useRef(null);
   const failRef = useRef(null);
+  const autoRef = useRef(null);
   const { lang } = useLang();
   const t = T[lang];
 
@@ -40,6 +41,7 @@ export default function ImtihonPage() {
     const raw = localStorage.getItem('user');
     if (!raw) { router.push('/login'); return; }
     apiFetch('/saved').then(ids => setSavedIds(new Set(ids))).catch(() => {});
+    return () => { clearTimeout(autoRef.current); clearTimeout(failRef.current); };
   }, []);
 
   useEffect(() => {
@@ -83,10 +85,20 @@ export default function ImtihonPage() {
         }
         return next;
       });
+    } else {
+      // To'g'ri javob — avtomatik keyingi savolga o'tamiz
+      const currentIdx = idx;
+      clearTimeout(autoRef.current);
+      autoRef.current = setTimeout(() => {
+        if (currentIdx + 1 >= questions.length) { clearInterval(timerRef.current); setPhase('done'); return; }
+        setIdx(currentIdx + 1);
+        setSelected(answers[currentIdx + 1]?.selected ?? null);
+      }, 600);
     }
   }
 
   function next() {
+    clearTimeout(autoRef.current);
     if (idx + 1 >= questions.length) {
       clearInterval(timerRef.current);
       setPhase('done');
@@ -97,6 +109,7 @@ export default function ImtihonPage() {
   }
 
   function goTo(i) {
+    clearTimeout(autoRef.current);
     setIdx(i);
     setSelected(answers[i]?.selected ?? null);
   }
