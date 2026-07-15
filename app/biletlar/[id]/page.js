@@ -13,6 +13,7 @@ import { canAccessTicket } from '@/lib/access';
 import { isComingSoon } from '@/lib/comingSoon';
 import QuestionImage from '@/components/QuestionImage';
 import { preloadImages } from '@/lib/preload';
+import { recordAnswer, recordExam } from '@/lib/gamification';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -73,6 +74,7 @@ export default function BiletTestPage() {
     const correctIdx = q.variants.findIndex(v => v.is_correct);
     const isCorrect = i === correctIdx;
     setSelected(i);
+    recordAnswer(isCorrect);
     setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect } }));
     if (isCorrect) {
       // To'g'ri javob — avtomatik keyingi savolga o'tamiz (mavzulardagi kabi)
@@ -102,6 +104,7 @@ export default function BiletTestPage() {
     const pct = Math.round((correctCount / total) * 100);
     const uid = userId || JSON.parse(localStorage.getItem('user') || '{}').id;
     localStorage.setItem(`bilet_result_${uid}_${id}`, JSON.stringify({ correct: correctCount, total, percent: pct, date: Date.now() }));
+    recordExam(pct);
     setDone(true);
   }
 

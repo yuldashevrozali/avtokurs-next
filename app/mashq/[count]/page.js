@@ -12,6 +12,7 @@ import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
 import QuestionImage from '@/components/QuestionImage';
 import { preloadImages } from '@/lib/preload';
+import { recordAnswer } from '@/lib/gamification';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -59,6 +60,7 @@ export default function MashqPage() {
     const correctIdx = q.variants.findIndex(v => v.is_correct);
     setSelected(i);
     const isCorrect = i === correctIdx;
+    recordAnswer(isCorrect);
     setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect } }));
     if (!isCorrect) {
       apiFetch('/xatolar', { method: 'POST', body: JSON.stringify({ questionId: q.id }) }).catch(() => {});

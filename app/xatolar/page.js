@@ -12,6 +12,7 @@ import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
 import QuestionImage from '@/components/QuestionImage';
 import { preloadImages } from '@/lib/preload';
+import { recordAnswer } from '@/lib/gamification';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 
@@ -48,6 +49,7 @@ export default function XatolarPage() {
     const correctIdx = q.variants.findIndex(v => v.is_correct);
     const isCorrect = i === correctIdx;
     setSelected(i);
+    recordAnswer(isCorrect);
     setAnswers(prev => ({ ...prev, [idx]: { selected: i, correctIdx, isCorrect } }));
     if (isCorrect) {
       const cur = idx;

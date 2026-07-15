@@ -12,6 +12,7 @@ import { useGuard } from '@/lib/usePremiumGuard';
 import { isPremiumUser } from '@/lib/access';
 import QuestionImage from '@/components/QuestionImage';
 import { preloadImages } from '@/lib/preload';
+import { recordAnswer, recordExam } from '@/lib/gamification';
 
 const LABELS = ['F1', 'F2', 'F3', 'F4', 'F5'];
 const TOTAL = 20;
@@ -71,6 +72,7 @@ export default function ImtihonPage() {
     const correctIdx = q.variants.findIndex(v => v.is_correct);
     const isCorrect = i === correctIdx;
     setSelected(i);
+    recordAnswer(isCorrect);
     setAnswers(prev => ({ ...prev, [idx]: { selected: i, correct: correctIdx, isCorrect } }));
     if (!isCorrect) {
       apiFetch('/xatolar', { method: 'POST', body: JSON.stringify({ questionId: q.id }) }).catch(() => {});
@@ -133,6 +135,13 @@ export default function ImtihonPage() {
   useEffect(() => {
     preloadImages([questions[idx + 1]?.image_url, questions[idx + 2]?.image_url]);
   }, [idx, questions]);
+
+  // Imtihon yakunlanganda natijani gamification'ga yozamiz (100% imtihon yutug'i uchun)
+  useEffect(() => {
+    if (phase !== 'done') return;
+    const cc = Object.values(answers).filter(a => a.isCorrect).length;
+    recordExam((cc / TOTAL) * 100);
+  }, [phase]);
 
   async function toggleSave(questionId) {
     const isSaved = savedIds.has(questionId);

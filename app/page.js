@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import { useEffect, useState } from 'react';
 import { useLang, T } from '@/lib/lang';
+import { getStreak } from '@/lib/gamification';
 
 const STATS = (t) => [
   { label: t.stat_qs,        value: '1220+' },
@@ -12,14 +13,15 @@ const STATS = (t) => [
 ];
 
 const SIDEBAR_LINKS = (t) => [
-  { href: '/mavzular',  icon: '📚', label: t.topics   },
-  { href: '/biletlar',  icon: '🎫', label: t.tickets  },
-  { href: '/imtihon',   icon: '⏱',  label: t.exam     },
-  { href: '/modules',   icon: '🎬', label: t.videos   },
-  { href: '/battle',    icon: '⚔️', label: t.battle   },
-  { href: '/marafon',   icon: '🏃', label: t.marathon },
-  { href: '/saqlangan', icon: '🔖', label: t.saved    },
-  { href: '/xatolar',   icon: '❌', label: t.xato_title },
+  { href: '/mavzular',    icon: '📚', label: t.topics   },
+  { href: '/biletlar',    icon: '🎫', label: t.tickets  },
+  { href: '/imtihon',     icon: '⏱',  label: t.exam     },
+  { href: '/modules',     icon: '🎬', label: t.videos   },
+  { href: '/yutuqlar',    icon: '🏆', label: t.ach_l    },
+  { href: '/battle',      icon: '⚔️', label: t.battle   },
+  { href: '/marafon',     icon: '🏃', label: t.marathon },
+  { href: '/saqlangan',   icon: '🔖', label: t.saved    },
+  { href: '/xatolar',     icon: '❌', label: t.xato_title },
 ];
 
 const FEATURES = (t) => [
@@ -38,12 +40,17 @@ const FEATURES = (t) => [
 
 export default function Home() {
   const [user, setUser] = useState(null);
+  const [streak, setStreak] = useState({ count: 0, best: 0 });
   const { lang } = useLang();
   const t = T[lang];
 
   useEffect(() => {
     const raw = localStorage.getItem('user');
-    if (raw) setUser(JSON.parse(raw));
+    if (raw) {
+      const u = JSON.parse(raw);
+      setUser(u);
+      setStreak(getStreak(u.id));
+    }
   }, []);
 
   const dest = (href) => user ? href : '/login';
@@ -100,6 +107,23 @@ export default function Home() {
 
         {/* ── Sidebar ── */}
         <aside className="home-sidebar">
+          {/* Kunlik streak */}
+          {user && (
+            <div style={{background:'linear-gradient(135deg,#F97316 0%,#EF4444 100%)',borderRadius:12,padding:'1rem 1.1rem',marginBottom:'1rem',color:'white'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
+                <span style={{fontSize:'1.9rem',lineHeight:1}}>🔥</span>
+                <div style={{lineHeight:1.15}}>
+                  <div style={{fontSize:'1.75rem',fontWeight:800}}>{streak.count}</div>
+                  <div style={{fontSize:'0.78rem',opacity:0.9}}>{t.streak_days} · {t.streak_l}</div>
+                </div>
+              </div>
+              <div style={{fontSize:'0.72rem',opacity:0.85,marginTop:'0.6rem',display:'flex',justifyContent:'space-between'}}>
+                <span>{t.streak_best}: {streak.best}</span>
+                <span>{streak.count > 0 ? t.streak_today_done : t.streak_hint}</span>
+              </div>
+            </div>
+          )}
+
           <div className="home-sidebar-nav">
             <div className="home-sidebar-header">{t.home_sections}</div>
             <div className="home-sidebar-links">

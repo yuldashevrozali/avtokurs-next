@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useLang, T } from '@/lib/lang';
+import { touchStreak } from '@/lib/gamification';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -20,11 +21,12 @@ export default function Navbar() {
     { href: '/biletlar', label: t.tickets },
     { href: '/imtihon',  label: t.exam    },
     { href: '/modules',  label: t.videos  },
+    { href: '/yutuqlar', label: t.ach_l   },
   ];
 
   useEffect(() => {
     const u = localStorage.getItem('user');
-    if (u) setUser(JSON.parse(u));
+    if (u) { const parsed = JSON.parse(u); setUser(parsed); touchStreak(parsed.id); }
     setDark(document.documentElement.getAttribute('data-theme') === 'dark');
     const saved = parseInt(localStorage.getItem('font-size')) || 16;
     setFontSize(saved);
