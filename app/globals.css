@@ -192,21 +192,21 @@ nav {
 .q-nav-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 8px;
   margin-top: 1rem;
-  padding: 0.875rem 1rem;
+  padding: 1rem 1.15rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
 }
 .q-nav-cell {
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.72rem;
+  font-size: 0.95rem;
   font-weight: 700;
   cursor: pointer;
   box-sizing: border-box;
@@ -214,6 +214,120 @@ nav {
   user-select: none;
 }
 .q-nav-cell:hover { transform: scale(1.12); }
+
+/* ── Yagona test savol layouti (QuizQuestion) ─────────────── */
+.quiz-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.quiz-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.1rem 1.4rem;
+  background: var(--primary);
+}
+.quiz-banner-text {
+  flex: 1;
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.15rem, 2.2vw, 1.7rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+.quiz-banner-side {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+.quiz-banner-count {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+.quiz-banner-count strong { color: #fff; }
+.quiz-save-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.1rem;
+}
+.quiz-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 1.5rem;
+  padding: 1.5rem;
+  align-items: start;
+}
+.quiz-image { width: 100%; }
+.quiz-answers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.quiz-answer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.15rem;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.quiz-answer:hover:not(:disabled) { border-color: var(--primary); }
+.quiz-answer:disabled { cursor: default; }
+.quiz-flabel {
+  flex-shrink: 0;
+  min-width: 52px;
+  height: 44px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.quiz-answer-text {
+  font-size: clamp(1rem, 1.6vw, 1.25rem);
+  line-height: 1.4;
+  font-weight: 500;
+}
+.quiz-answer.is-correct {
+  border-color: #16A34A;
+  background: #F0FDF4;
+  color: #166534;
+}
+.quiz-answer.is-correct .quiz-flabel { background: #16A34A; }
+.quiz-answer.is-wrong {
+  border-color: #DC2626;
+  background: #FEF2F2;
+  color: #991B1B;
+}
+.quiz-answer.is-wrong .quiz-flabel { background: #DC2626; }
+
+@media (max-width: 768px) {
+  .quiz-body {
+    grid-template-columns: 1fr;
+    gap: 1.1rem;
+    padding: 1.1rem;
+  }
+  .quiz-banner { padding: 0.9rem 1.1rem; }
+  .quiz-flabel { min-width: 46px; height: 40px; }
+  .q-nav-cell { width: 38px; height: 38px; }
+}
 
 /* ── Responsive: ≤ 768px ─────────────────────── */
 @media (max-width: 768px) {

@@ -10,7 +10,7 @@ import { useQuestionNav } from '@/lib/useQuestionNav';
 import PremiumGate from '@/components/PremiumGate';
 import { useGuard } from '@/lib/usePremiumGuard';
 import { canAccessTopic } from '@/lib/access';
-import QuestionImage from '@/components/QuestionImage';
+import QuizQuestion from '@/components/QuizQuestion';
 import { preloadImages } from '@/lib/preload';
 import { recordAnswer } from '@/lib/gamification';
 
@@ -235,7 +235,7 @@ export default function TopicTestPage() {
         </div>
       )}
 
-      <div style={{maxWidth:720,margin:'0 auto',padding:'1.5rem 1rem'}}>
+      <div style={{maxWidth:1100,margin:'0 auto',padding:'1.5rem 1rem'}}>
 
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'1.25rem'}}>
@@ -251,166 +251,118 @@ export default function TopicTestPage() {
         </div>
 
         {/* Question card */}
-        <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
-          {q.image_url && (
-            <QuestionImage src={q.image_url} maxHeight={260} onClick={() => setLightbox(q.image_url)} />
-          )}
+        <QuizQuestion
+          q={q} idx={idx} total={total} lang={lang}
+          selected={selected} correctIdx={correctIdx}
+          onSelect={select} onImageClick={() => setLightbox(q.image_url)}
+          isSaved={isSaved} onToggleSave={toggleSave}
+        />
 
-          <div style={{padding:'1.25rem'}}>
+        {/* 💡 izoh tugmasi (admin doim, user faqat izoh bo'lsa) */}
+        {(isAdmin || hasNote) && (
+          <div style={{marginTop:'0.75rem',display:'flex',justifyContent:'flex-end'}}>
+            <button
+              onClick={() => openNotePanel(q.id)}
+              title={hasNote ? t.note_edit : t.note_add}
+              style={{
+                display:'flex',alignItems:'center',gap:'0.3rem',padding:'0.45rem 0.85rem',
+                border:`1.5px solid ${panelOpen ? '#2563EB' : hasNote ? '#F59E0B' : 'var(--border)'}`,
+                borderRadius:8,
+                background: panelOpen ? '#EFF6FF' : hasNote ? '#FFFBEB' : 'var(--surface)',
+                color: panelOpen ? '#2563EB' : hasNote ? '#92400E' : 'var(--text-muted)',
+                cursor:'pointer',fontSize:'0.9rem',fontWeight:500,whiteSpace:'nowrap',
+              }}
+            >
+              <span style={{fontSize:'1.05rem'}}>💡</span>
+              <span>{t.note_l}</span>
+              {hasNote && !isAdmin && <span style={{width:6,height:6,borderRadius:'50%',background:'#F59E0B',display:'inline-block'}} />}
+            </button>
+          </div>
+        )}
 
-            {/* Question text + 💡 button */}
-            <div style={{display:'flex',alignItems:'flex-start',gap:'0.75rem',marginBottom:'1.1rem'}}>
-              <p style={{fontSize:'0.975rem',fontWeight:500,lineHeight:1.5,color:'var(--text)',flex:1,margin:0}}>{q.text[lang] || q.text.uz}</p>
-
-              {/* Save button */}
+        {/* Note panel */}
+        {panelOpen && (
+          <div style={{
+            marginTop:'0.75rem',
+            border:'1.5px solid #FDE68A',
+            borderRadius:8,
+            background:'#FFFBEB',
+            overflow:'hidden',
+          }}>
+            <div style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.6rem 0.875rem',borderBottom:'1px solid #FDE68A',background:'#FEF3C7'}}>
+              <span style={{fontSize:'0.9rem'}}>💡</span>
+              <span style={{fontSize:'0.85rem',fontWeight:600,color:'#92400E'}}>
+                {isAdmin ? (hasNote ? t.note_edit : t.note_add) : t.note_l}
+              </span>
               <button
-                onClick={() => toggleSave(q.id)}
-                title={isSaved ? "Saqlanganlardan o'chirish" : "Saqlash"}
-                style={{
-                  flexShrink: 0,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: '1.25rem', lineHeight: 1, padding: '0.2rem 0.1rem',
-                  color: isSaved ? '#F59E0B' : 'var(--text-muted)',
-                  transition: 'color 0.15s, transform 0.1s',
-                }}
-              >🔖</button>
+                onClick={() => setNotePanel(null)}
+                style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',fontSize:'1.1rem',color:'#92400E',lineHeight:1,padding:'0 0.25rem'}}
+              >✕</button>
+            </div>
 
-              {/* Show button: admin always, user only if note exists */}
-              {(isAdmin || hasNote) && (
-                <button
-                  onClick={() => openNotePanel(q.id)}
-                  title={hasNote ? t.note_edit : t.note_add}
-                  style={{
-                    flexShrink: 0,
-                    display: 'flex', alignItems: 'center', gap: '0.3rem',
-                    padding: '0.3rem 0.65rem',
-                    border: `1.5px solid ${panelOpen ? '#2563EB' : hasNote ? '#F59E0B' : 'var(--border)'}`,
-                    borderRadius: 6,
-                    background: panelOpen ? '#EFF6FF' : hasNote ? '#FFFBEB' : 'var(--surface)',
-                    color: panelOpen ? '#2563EB' : hasNote ? '#92400E' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
-                    transition: 'all 0.15s',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <span style={{fontSize:'1rem'}}>💡</span>
-                  <span>{t.note_l}</span>
-                  {hasNote && !isAdmin && <span style={{width:6,height:6,borderRadius:'50%',background:'#F59E0B',display:'inline-block'}} />}
-                </button>
+            <div style={{padding:'0.875rem'}}>
+              {isAdmin ? (
+                /* Admin: editable textarea */
+                <>
+                  <textarea
+                    ref={textareaRef}
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    placeholder={t.note_ph}
+                    rows={3}
+                    style={{
+                      width:'100%', padding:'0.6rem 0.75rem',
+                      border:'1px solid #FDE68A', borderRadius:6,
+                      fontSize:'0.875rem', fontFamily:'inherit',
+                      background:'white', color:'#1E293B',
+                      resize:'vertical', outline:'none',
+                      boxSizing:'border-box',
+                    }}
+                  />
+                  <div style={{display:'flex',gap:'0.5rem',marginTop:'0.6rem',flexWrap:'wrap'}}>
+                    <button
+                      onClick={() => saveNote(q.id)}
+                      disabled={!editText.trim() || noteSaving}
+                      style={{padding:'0.4rem 1rem',background:'#2563EB',color:'white',border:'none',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer',opacity:(!editText.trim()||noteSaving)?0.5:1}}
+                    >
+                      {noteSaving ? t.note_saving : t.note_save}
+                    </button>
+                    {hasNote && (
+                      <button
+                        onClick={() => deleteNote(q.id)}
+                        style={{padding:'0.4rem 1rem',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FCA5A5',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer'}}
+                      >
+                        {t.note_del}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setNotePanel(null)}
+                      style={{padding:'0.4rem 0.875rem',background:'var(--surface)',color:'var(--text-muted)',border:'1px solid var(--border)',borderRadius:6,fontSize:'0.85rem',cursor:'pointer'}}
+                    >
+                      {t.cancel}
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* User: read-only */
+                <p style={{fontSize:'0.9rem',color:'#78350F',lineHeight:1.6,margin:0}}>
+                  {notes[q.id]}
+                </p>
               )}
             </div>
-
-            {/* Note panel */}
-            {panelOpen && (
-              <div style={{
-                marginBottom:'1rem',
-                border:'1.5px solid #FDE68A',
-                borderRadius:8,
-                background:'#FFFBEB',
-                overflow:'hidden',
-              }}>
-                <div style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.6rem 0.875rem',borderBottom:'1px solid #FDE68A',background:'#FEF3C7'}}>
-                  <span style={{fontSize:'0.9rem'}}>💡</span>
-                  <span style={{fontSize:'0.85rem',fontWeight:600,color:'#92400E'}}>
-                    {isAdmin ? (hasNote ? t.note_edit : t.note_add) : t.note_l}
-                  </span>
-                  <button
-                    onClick={() => setNotePanel(null)}
-                    style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',fontSize:'1.1rem',color:'#92400E',lineHeight:1,padding:'0 0.25rem'}}
-                  >✕</button>
-                </div>
-
-                <div style={{padding:'0.875rem'}}>
-                  {isAdmin ? (
-                    /* Admin: editable textarea */
-                    <>
-                      <textarea
-                        ref={textareaRef}
-                        value={editText}
-                        onChange={e => setEditText(e.target.value)}
-                        placeholder={t.note_ph}
-                        rows={3}
-                        style={{
-                          width:'100%', padding:'0.6rem 0.75rem',
-                          border:'1px solid #FDE68A', borderRadius:6,
-                          fontSize:'0.875rem', fontFamily:'inherit',
-                          background:'white', color:'#1E293B',
-                          resize:'vertical', outline:'none',
-                          boxSizing:'border-box',
-                        }}
-                      />
-                      <div style={{display:'flex',gap:'0.5rem',marginTop:'0.6rem',flexWrap:'wrap'}}>
-                        <button
-                          onClick={() => saveNote(q.id)}
-                          disabled={!editText.trim() || noteSaving}
-                          style={{padding:'0.4rem 1rem',background:'#2563EB',color:'white',border:'none',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer',opacity:(!editText.trim()||noteSaving)?0.5:1}}
-                        >
-                          {noteSaving ? t.note_saving : t.note_save}
-                        </button>
-                        {hasNote && (
-                          <button
-                            onClick={() => deleteNote(q.id)}
-                            style={{padding:'0.4rem 1rem',background:'#FEF2F2',color:'#DC2626',border:'1px solid #FCA5A5',borderRadius:6,fontSize:'0.85rem',fontWeight:600,cursor:'pointer'}}
-                          >
-                            {t.note_del}
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setNotePanel(null)}
-                          style={{padding:'0.4rem 0.875rem',background:'var(--surface)',color:'var(--text-muted)',border:'1px solid var(--border)',borderRadius:6,fontSize:'0.85rem',cursor:'pointer'}}
-                        >
-                          {t.cancel}
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    /* User: read-only */
-                    <p style={{fontSize:'0.9rem',color:'#78350F',lineHeight:1.6,margin:0}}>
-                      {notes[q.id]}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Answer variants */}
-            <div style={{display:'flex',flexDirection:'column',gap:'0.6rem'}}>
-              {q.variants.map((v, i) => {
-                let bg = 'var(--surface)';
-                let border = '1.5px solid var(--border)';
-                let color = 'var(--text)';
-                if (selected !== null) {
-                  if (i === correctIdx) { bg = '#F0FDF4'; border = '1.5px solid #16A34A'; color = '#166534'; }
-                  if (i === selected && selected !== correctIdx) { bg = '#FEF2F2'; border = '1.5px solid #DC2626'; color = '#991B1B'; }
-                }
-                return (
-                  <button key={i} onClick={() => select(i)} disabled={selected !== null}
-                    style={{padding:'0.8rem 1rem',border,borderRadius:8,background:bg,color,textAlign:'left',fontSize:'0.9rem',
-                      cursor:selected===null?'pointer':'default',display:'flex',gap:'0.75rem',alignItems:'flex-start',lineHeight:1.4}}>
-                    <span style={{minWidth:22,height:22,borderRadius:'50%',border:'1.5px solid var(--border)',background:'var(--bg)',
-                      display:'flex',alignItems:'center',justifyContent:'center',fontSize:'0.75rem',fontWeight:600,flexShrink:0,color:'var(--text-muted)'}}>
-                      {LABELS[i]}
-                    </span>
-                    <span>{v.text[lang] || v.text.uz}</span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
+        )}
 
-          {selected !== null && (
-            <div style={{padding:'1rem 1.25rem',borderTop:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface)',gap:'1rem'}}>
-              <span style={{fontSize:'0.875rem',fontWeight:500,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
-                {selected === correctIdx ? t.correct : t.wrong}
-              </span>
-              <button onClick={next} className="btn btn-primary">
-                {idx + 1 < total ? t.next_q : t.finish}
-              </button>
-            </div>
-          )}
-        </div>
+        {selected !== null && (
+          <div style={{marginTop:'0.75rem',padding:'1rem 1.25rem',border:'1px solid var(--border)',borderRadius:12,background:'var(--surface)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'1rem'}}>
+            <span style={{fontSize:'1rem',fontWeight:600,color:selected===correctIdx?'#16A34A':'#DC2626'}}>
+              {selected === correctIdx ? t.correct : t.wrong}
+            </span>
+            <button onClick={next} className="btn btn-primary">
+              {idx + 1 < total ? t.next_q : t.finish}
+            </button>
+          </div>
+        )}
 
         {/* Question navigation grid */}
         <div className="q-nav-grid">
